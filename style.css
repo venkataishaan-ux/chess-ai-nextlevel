@@ -1,0 +1,154 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #171717;
+  background: #f3f4f6;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+.app {
+  max-width: 1250px;
+  margin: auto;
+  padding: 32px 20px 60px;
+}
+
+header { margin-bottom: 24px; }
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+h1 {
+  margin: 4px 0;
+  font-size: clamp(30px, 5vw, 52px);
+}
+
+.sub { color: #666; }
+
+.input-card, .board-card, .moves-card, .report-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.05);
+}
+
+textarea {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  font: 14px ui-monospace, monospace;
+  resize: vertical;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.controls label {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+}
+
+select, button {
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+}
+
+button.primary {
+  background: #171717;
+  color: white;
+  border-color: #171717;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 520px) minmax(220px, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.report-card {
+  grid-column: 1 / -1;
+}
+
+.board {
+  width: min(100%, 500px);
+  aspect-ratio: 1;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #222;
+}
+
+.square {
+  display: grid;
+  place-items: center;
+  font-size: clamp(25px, 5vw, 48px);
+  user-select: none;
+}
+
+.light { background: #eee; }
+.dark { background: #769656; }
+
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#moveLabel {
+  min-width: 110px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.moves-list {
+  display: grid;
+  gap: 5px;
+  max-height: 500px;
+  overflow: auto;
+}
+
+.move {
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.move:hover, .move.active {
+  background: #eee;
+}
+
+.issue {
+  border-left: 4px solid #d66;
+  padding: 12px;
+  margin: 10px 0;
+  background: #fafafa;
+}
+
+.issue strong { display: block; }
+
+@media (max-width: 850px) {
+  .workspace { grid-template-columns: 1fr; }
+  .report-card { grid-column: auto; }
+}

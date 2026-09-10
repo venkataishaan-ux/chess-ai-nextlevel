@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chess Coach AI - V1</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="app">
+    <header>
+      <p class="eyebrow">♟ CHESS COACH AI</p>
+      <h1>Your game. Your mistakes. Your coach.</h1>
+      <p class="sub">V1: PGN replay + Stockfish analysis.</p>
+    </header>
+
+    <section class="input-card">
+      <label for="pgn">Paste a PGN</label>
+      <textarea id="pgn" placeholder='[Event "Example"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6'></textarea>
+
+      <div class="controls">
+        <label>
+          Analysis depth
+          <select id="depth">
+            <option value="12">12 - Fast</option>
+            <option value="14" selected>14 - Balanced</option>
+            <option value="18">18 - Deeper</option>
+          </select>
+        </label>
+        <button id="loadBtn">Load Game</button>
+        <button id="analyzeBtn" class="primary">Analyze with Stockfish</button>
+      </div>
+      <p id="status"></p>
+    </section>
+
+    <section class="workspace">
+      <div class="board-card">
+        <div id="board" class="board"></div>
+        <div class="navigation">
+          <button id="firstBtn">⏮</button>
+          <button id="prevBtn">◀</button>
+          <span id="moveLabel">Start</span>
+          <button id="nextBtn">▶</button>
+          <button id="lastBtn">⏭</button>
+        </div>
+      </div>
+
+      <div class="moves-card">
+        <h2>Moves</h2>
+        <div id="moves"></div>
+      </div>
+
+      <div class="report-card">
+        <h2>Coach Report</h2>
+        <div id="report">
+          <p>Load a PGN, then run Stockfish analysis.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

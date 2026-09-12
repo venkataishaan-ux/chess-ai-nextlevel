@@ -73,10 +73,10 @@ def _move_facts(before: chess.Board, move: chess.Move, after: chess.Board) -> di
         captured = chess.Piece(chess.PAWN, not before.turn)
     return {
         "piece": piece.symbol() if piece else None,
-        "piece_name": piece.piece_name() if piece else None,
+        "piece_name": chess.piece_name(piece.piece_type) if piece else None,
         "capture": before.is_capture(move),
         "captured_piece": captured.symbol() if captured else None,
-        "captured_piece_name": captured.piece_name() if captured else None,
+        "captured_piece_name": chess.piece_name(captured.piece_type) if captured else None,
         "check": after.is_check(),
         "checkmate": after.is_checkmate(),
         "castle": before.is_castling(move),

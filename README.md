@@ -1,9 +1,9 @@
-[README.md](https://github.com/user-attachments/files/32139215/README.md)
-# Chess Coach AI — V2.1.5
+[README.md](https://github.com/user-attachments/files/32141103/README.md)
+# Chess Coach AI — V2.2
 
 Personalized chess analysis app built with Flask, python-chess, and Stockfish.
 
-## V2.1.5
+## V2.2
 
 - Every move receives one classification: **Brilliant, Good, Inaccuracy, Mistake, Blunder**.
 - Stockfish remains the source of evaluation and classification.

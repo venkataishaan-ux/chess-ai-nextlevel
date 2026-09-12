@@ -9,8 +9,11 @@ let analysis = null;
 
 const $ = id => document.getElementById(id);
 
+const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 function setStatus(text) {
-  $("status").textContent = text;
+  const status = $("status");
+  if (status) status.textContent = text;
 }
 
 function escapeHtml(value) {
@@ -28,20 +31,24 @@ function emptyBoard() {
 
 function boardFromFen(fen) {
   const board = emptyBoard();
-  const rows = fen.split(" ")[0].split("/");
+  const rows = String(fen || STARTING_FEN).split(" ")[0].split("/");
+
   rows.forEach((row, r) => {
     let c = 0;
     for (const char of row) {
       if (/[1-8]/.test(char)) c += Number(char);
-      else board[r][c++] = char;
+      else if (c < 8) board[r][c++] = char;
     }
   });
+
   return board;
 }
 
-function renderBoard(fen) {
+function renderBoard(fen = STARTING_FEN) {
   const board = boardFromFen(fen);
   const root = $("board");
+  if (!root) return;
+
   root.innerHTML = "";
 
   for (let r = 0; r < 8; r++) {
@@ -57,6 +64,7 @@ function renderBoard(fen) {
 
 function renderMoves() {
   const root = $("moves");
+  if (!root) return;
   root.innerHTML = "";
   if (!game) return;
 
@@ -78,6 +86,12 @@ function renderMoves() {
 }
 
 function updatePosition() {
+  if (!game) {
+    renderBoard(STARTING_FEN);
+    $("moveLabel").textContent = "Start";
+    return;
+  }
+
   const fen = currentPly === 0
     ? game.initial_fen
     : game.moves[currentPly - 1].fen;
@@ -92,45 +106,71 @@ function updatePosition() {
 
 async function loadGame() {
   const pgn = $("pgn").value.trim();
-  if (!pgn) return setStatus("Paste a PGN first.");
+  if (!pgn) {
+    setStatus("Paste a PGN first.");
+    return;
+  }
 
   setStatus("Parsing PGN...");
-  const response = await fetch("/api/parse-pgn", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({pgn})
-  });
-  const data = await response.json();
 
-  if (!response.ok) return setStatus(data.error || "Could not parse PGN.");
+  try {
+    const response = await fetch("/api/parse-pgn", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({pgn})
+    });
 
-  game = data;
-  analysis = null;
-  currentPly = 0;
-  updatePosition();
-  $("report").innerHTML = "<p>Game loaded. Click <b>Analyze with Stockfish</b> to generate the report.</p>";
-  setStatus(`Loaded ${data.moves.length} plies.`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Could not parse PGN.");
+    }
+
+    if (!data.initial_fen || !Array.isArray(data.moves)) {
+      throw new Error("The server returned an invalid game response.");
+    }
+
+    game = data;
+    analysis = null;
+    currentPly = 0;
+    updatePosition();
+    $("report").innerHTML = "<p>Game loaded. Click <b>Analyze with Stockfish</b> to generate the report.</p>";
+    setStatus(`Loaded ${data.moves.length} plies.`);
+  } catch (error) {
+    console.error("Load game error:", error);
+    setStatus(`Could not load game: ${error.message}`);
+  }
 }
 
 async function runAnalysis() {
   const pgn = $("pgn").value.trim();
-  if (!pgn) return setStatus("Load a PGN first.");
+  if (!pgn) {
+    setStatus("Load a PGN first.");
+    return;
+  }
 
   setStatus("Stockfish is analyzing. Deeper analysis may take longer...");
   const depth = Number($("depth").value);
 
-  const response = await fetch("/api/analyze", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({pgn, depth})
-  });
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({pgn, depth})
+    });
 
-  const data = await response.json();
-  if (!response.ok) return setStatus(data.error || "Analysis failed.");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Analysis failed.");
+    }
 
-  analysis = data;
-  renderReport();
-  setStatus("Analysis complete.");
+    analysis = data;
+    renderReport();
+    setStatus("Analysis complete.");
+  } catch (error) {
+    console.error("Analysis error:", error);
+    setStatus(`Analysis failed: ${error.message}`);
+  }
 }
 
 function renderIssue(item) {
@@ -191,9 +231,14 @@ function renderReport() {
   $("report").innerHTML = html;
 }
 
-$("loadBtn").onclick = loadGame;
-$("analyzeBtn").onclick = runAnalysis;
-$("firstBtn").onclick = () => { if (game) { currentPly = 0; updatePosition(); } };
-$("prevBtn").onclick = () => { if (game) { currentPly = Math.max(0, currentPly - 1); updatePosition(); } };
-$("nextBtn").onclick = () => { if (game) { currentPly = Math.min(game.moves.length, currentPly + 1); updatePosition(); } };
-$("lastBtn").onclick = () => { if (game) { currentPly = game.moves.length; updatePosition(); } };
+function init() {
+  renderBoard(STARTING_FEN);
+  $("loadBtn").onclick = loadGame;
+  $("analyzeBtn").onclick = runAnalysis;
+  $("firstBtn").onclick = () => { if (game) { currentPly = 0; updatePosition(); } };
+  $("prevBtn").onclick = () => { if (game) { currentPly = Math.max(0, currentPly - 1); updatePosition(); } };
+  $("nextBtn").onclick = () => { if (game) { currentPly = Math.min(game.moves.length, currentPly + 1); updatePosition(); } };
+  $("lastBtn").onclick = () => { if (game) { currentPly = game.moves.length; updatePosition(); } };
+}
+
+document.addEventListener("DOMContentLoaded", init);

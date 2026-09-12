@@ -1,44 +1,43 @@
 import os
 import shutil
+from typing import Optional
+
 import chess
 import chess.engine
 
 
 class StockfishEngine:
-    def __init__(self):
-        configured = os.environ.get("STOCKFISH_PATH")
-        self.path = configured or shutil.which("stockfish")
+    def __init__(self, path: Optional[str] = None):
+        self.path = path or os.getenv("STOCKFISH_PATH") or shutil.which("stockfish") or "/usr/games/stockfish"
         self.engine = None
-
-    def _connect(self):
-        if self.engine is None:
-            if not self.path:
-                raise RuntimeError(
-                    "Stockfish was not found. Install Stockfish and set "
-                    "STOCKFISH_PATH to the executable, or put stockfish on PATH."
-                )
+        self._error = None
+        try:
             self.engine = chess.engine.SimpleEngine.popen_uci(self.path)
+        except Exception as exc:
+            self._error = str(exc)
 
     def status(self):
         return {
-            "available": bool(self.path),
+            "available": self.engine is not None,
             "path": self.path,
+            "error": self._error,
         }
 
-    def analyze(self, board: chess.Board, depth: int = 14):
-        self._connect()
-        info = self.engine.analyse(board, chess.engine.Limit(depth=depth))
-        score = info["score"].pov(board.turn)
-        pv = info.get("pv", [])
-
-        return {
-            "score_cp": score.score(mate_score=100000),
-            "score": str(score),
-            "best_move": pv[0].uci() if pv else None,
-            "pv": [move.uci() for move in pv[:8]],
-        }
+    def analyse(self, board: chess.Board, depth: int = 14, multipv: int = 1):
+        if self.engine is None:
+            raise RuntimeError(f"Stockfish is unavailable: {self._error or 'unknown error'}")
+        limit = chess.engine.Limit(depth=depth)
+        return self.engine.analyse(board, limit, multipv=multipv)
 
     def close(self):
         if self.engine is not None:
-            self.engine.quit()
-            self.engine = None
+            try:
+                self.engine.quit()
+            finally:
+                self.engine = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

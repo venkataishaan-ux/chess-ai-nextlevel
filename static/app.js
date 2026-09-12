@@ -1,164 +1,163 @@
-const PIECES = {
-  P: "♙", N: "♘", B: "♗", R: "♖", Q: "♕", K: "♔",
-  p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚"
-};
-
+const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 let game = null;
 let currentPly = 0;
-let analysis = null;
+let lastAnalysis = null;
 
-const $ = id => document.getElementById(id);
+const PIECES = { P:"♙", N:"♘", B:"♗", R:"♖", Q:"♕", K:"♔", p:"♟", n:"♞", b:"♝", r:"♜", q:"♛", k:"♚" };
 
-function setStatus(text) {
-  $("status").textContent = text;
+function $(id) { return document.getElementById(id); }
+function escapeHtml(value) {
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
 
-function emptyBoard() {
-  return Array.from({length: 8}, () => Array(8).fill(null));
-}
-
-function boardFromFen(fen) {
-  const board = emptyBoard();
+function parseFen(fen) {
   const rows = fen.split(" ")[0].split("/");
-  rows.forEach((row, r) => {
-    let c = 0;
-    for (const char of row) {
-      if (/[1-8]/.test(char)) c += Number(char);
-      else board[r][c++] = char;
+  if (rows.length !== 8) throw new Error("Invalid FEN board.");
+  const board = [];
+  for (const row of rows) {
+    const cells = [];
+    for (const ch of row) {
+      if (/\d/.test(ch)) for (let i = 0; i < Number(ch); i++) cells.push(null);
+      else cells.push(ch);
     }
-  });
+    if (cells.length !== 8) throw new Error("Invalid FEN rank.");
+    board.push(cells);
+  }
   return board;
 }
 
-function renderBoard(fen) {
-  const board = boardFromFen(fen);
-  const root = $("board");
-  root.innerHTML = "";
+function renderBoard(fen = STARTING_FEN) {
+  const boardEl = $("board");
+  const cells = parseFen(fen);
+  boardEl.innerHTML = "";
+  const analysisMove = lastAnalysis?.moves?.[currentPly - 1];
+  const lastUci = analysisMove?.uci;
 
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const sq = document.createElement("div");
-      sq.className = `square ${(r + c) % 2 ? "dark" : "light"}`;
-      const piece = board[r][c];
-      if (piece) sq.textContent = PIECES[piece] || "";
-      root.appendChild(sq);
+  cells.forEach((row, rankIndex) => row.forEach((piece, fileIndex) => {
+    const square = document.createElement("div");
+    square.className = `square ${((rankIndex + fileIndex) % 2 === 0) ? "light" : "dark"}`;
+    const squareName = String.fromCharCode(97 + fileIndex) + (8 - rankIndex);
+    square.dataset.square = squareName;
+    if (piece) {
+      const span = document.createElement("span");
+      span.className = `piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`;
+      span.textContent = PIECES[piece] || piece;
+      square.appendChild(span);
     }
-  }
+    if (lastUci && (squareName === lastUci.slice(0,2) || squareName === lastUci.slice(2,4))) square.classList.add("last-move");
+    if (fileIndex === 0) {
+      const rank = document.createElement("span"); rank.className = "rank-label"; rank.textContent = 8 - rankIndex; square.appendChild(rank);
+    }
+    if (rankIndex === 7) {
+      const file = document.createElement("span"); file.className = "file-label"; file.textContent = squareName[0]; square.appendChild(file);
+    }
+    boardEl.appendChild(square);
+  }));
+}
+
+function updateControls() {
+  const total = game?.moves?.length ?? 0;
+  $("moveLabel").textContent = game ? (currentPly === 0 ? "Start" : `${game.moves[currentPly-1].ply}. ${game.moves[currentPly-1].san}`) : "Start";
+  $("moveCounter").textContent = game ? `${currentPly} / ${total}` : "0 / 0";
+  $("firstBtn").disabled = currentPly <= 0;
+  $("prevBtn").disabled = currentPly <= 0;
+  $("nextBtn").disabled = !game || currentPly >= total;
+  $("lastBtn").disabled = !game || currentPly >= total;
 }
 
 function renderMoves() {
-  const root = $("moves");
-  root.innerHTML = "";
-  if (!game) return;
-
-  const list = document.createElement("div");
-  list.className = "moves-list";
-
+  const movesEl = $("moves");
+  if (!game?.moves?.length) { movesEl.innerHTML = '<div class="empty">No moves loaded.</div>'; return; }
+  movesEl.innerHTML = "";
   game.moves.forEach((move, index) => {
-    const el = document.createElement("div");
-    el.className = "move" + (index + 1 === currentPly ? " active" : "");
-    el.textContent = `${Math.ceil(move.ply / 2)}${move.ply % 2 ? "." : "..."} ${move.san}`;
-    el.onclick = () => {
-      currentPly = index + 1;
-      updatePosition();
-    };
-    list.appendChild(el);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `move ${index + 1 === currentPly ? "active" : ""}`;
+    const result = lastAnalysis?.moves?.[index];
+    const badge = result ? `<span class="mini-badge ${result.label.toLowerCase()}">${escapeHtml(result.label)}</span>` : "";
+    button.innerHTML = `<span>${move.ply}. ${escapeHtml(move.san)}</span>${badge}`;
+    button.addEventListener("click", () => goToPly(index + 1));
+    movesEl.appendChild(button);
   });
-
-  root.appendChild(list);
 }
 
-function updatePosition() {
-  const fen = currentPly === 0
-    ? game.initial_fen
-    : game.moves[currentPly - 1].fen;
-
-  renderBoard(fen);
-  $("moveLabel").textContent = currentPly === 0
-    ? "Start"
-    : `Move ${currentPly}`;
-
-  renderMoves();
+function goToPly(ply) {
+  if (!game) return;
+  currentPly = Math.max(0, Math.min(ply, game.moves.length));
+  const fen = currentPly === 0 ? game.initial_fen : game.moves[currentPly - 1].fen;
+  renderBoard(fen); renderMoves(); updateControls();
 }
 
 async function loadGame() {
   const pgn = $("pgn").value.trim();
-  if (!pgn) return setStatus("Paste a PGN first.");
+  if (!pgn) { $("status").textContent = "Paste a PGN first."; return; }
+  $("status").textContent = "Loading game…";
+  try {
+    const response = await fetch("/api/parse-pgn", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn}) });
+    const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load PGN.");
+    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V2.1.5 report.</div>';
+    goToPly(0); $("status").textContent = `Loaded ${data.moves.length} ply.`;
+  } catch (error) { game = null; currentPly = 0; updateControls(); renderBoard(); renderMoves(); $("status").textContent = error.message; }
+}
 
-  setStatus("Parsing PGN...");
-  const response = await fetch("/api/parse-pgn", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({pgn})
-  });
-  const data = await response.json();
+function badge(label) { return `<span class="badge ${label.toLowerCase()}">${escapeHtml(label)}</span>`; }
+function renderIssue(item) {
+  const ex = item.explanation || {};
+  return `<article class="issue ${item.label.toLowerCase()}">
+    <div class="issue-top"><strong>${escapeHtml(item.move_number)}${item.side === "White" ? "." : "..."} ${escapeHtml(item.san)}</strong>${badge(item.label)}</div>
+    <div class="issue-stats"><span>Loss: <b>${escapeHtml(item.loss_cp)} cp</b></span><span>Best: <b>${escapeHtml(item.best_move_san || "n/a")}</b></span><span>Eval: <b>${escapeHtml(item.eval_before)} → ${escapeHtml(item.eval_after)}</b></span></div>
+    ${ex.headline ? `<p><b>What happened:</b> ${escapeHtml(ex.headline)}</p>` : ""}
+    ${ex.why ? `<p><b>Why:</b> ${escapeHtml(ex.why)}</p>` : ""}
+    ${ex.lesson ? `<p><b>Lesson:</b> ${escapeHtml(ex.lesson)}</p>` : ""}
+  </article>`;
+}
 
-  if (!response.ok) return setStatus(data.error || "Could not parse PGN.");
+function renderAnalysis(data) {
+  const s = data.summary || {};
+  const moves = data.moves || [];
+  const critical = data.critical || [];
+  const blunders = data.blunder_breakdown || [];
+  const turning = data.turning_points || [];
+  const counts = [["Brilliant",s.brilliant], ["Good",s.good], ["Inaccuracy",s.inaccuracies], ["Mistake",s.mistakes], ["Blunder",s.blunders]];
+  const countHtml = counts.map(([label,n]) => `<div class="summary-card"><span>${label}</span><strong>${n ?? 0}</strong></div>`).join("");
+  const breakdown = blunders.length ? blunders.map(renderIssue).join("") : '<div class="empty">No blunders detected at this depth. That is a good thing. 🧠</div>';
+  const criticalHtml = critical.length ? critical.map(renderIssue).join("") : '<div class="empty">No inaccuracies, mistakes, or blunders detected.</div>';
+  const turningHtml = turning.length ? turning.map(renderIssue).join("") : '<div class="empty">No major turning points detected.</div>';
+  const best = data.best_move ? renderIssue(data.best_move) : '<div class="empty">No move data.</div>';
+  const worst = data.worst_move ? renderIssue(data.worst_move) : '<div class="empty">No move data.</div>';
+  const allMoves = moves.map(renderIssue).join("");
 
-  game = data;
-  analysis = null;
-  currentPly = 0;
-  updatePosition();
-  $("report").innerHTML = "<p>Game loaded. Click <b>Analyze with Stockfish</b> to generate the report.</p>";
-  setStatus(`Loaded ${data.moves.length} plies.`);
+  $("analysis").innerHTML = `
+    <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div></section>
+    <section class="report-section"><h3>⚠️ Blunder Breakdown</h3>${breakdown}</section>
+    <section class="report-section"><h3>🎯 Turning Points</h3>${turningHtml}</section>
+    <section class="report-section"><h3>📌 Best Move</h3>${best}</section>
+    <section class="report-section"><h3>💥 Worst Move</h3>${worst}</section>
+    <section class="report-section"><h3>🔎 Critical Mistakes</h3>${criticalHtml}</section>
+    <section class="report-section"><h3>📋 Full Move-by-Move Breakdown</h3><div class="all-moves">${allMoves}</div></section>`;
+  renderMoves();
 }
 
 async function runAnalysis() {
-  const pgn = $("pgn").value.trim();
-  if (!pgn) return setStatus("Load a PGN first.");
-
-  setStatus("Stockfish is analyzing. Deeper analysis may take longer...");
-  const depth = Number($("depth").value);
-
-  const response = await fetch("/api/analyze", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({pgn, depth})
-  });
-
-  const data = await response.json();
-  if (!response.ok) return setStatus(data.error || "Analysis failed.");
-
-  analysis = data;
-  renderReport();
-  setStatus("Analysis complete.");
+  const pgn = $("pgn").value.trim(); if (!pgn) { $("status").textContent = "Paste a PGN first."; return; }
+  $("status").textContent = "Stockfish is calculating every move…"; $("analysis").innerHTML = '<div class="empty">Analyzing the full game…</div>';
+  try {
+    const depth = Number($("depth").value) || 14;
+    const response = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn, depth}) });
+    const data = await response.json(); if (!response.ok) throw new Error(data.error || "Analysis failed.");
+    lastAnalysis = data; renderAnalysis(data); if (game) goToPly(currentPly); $("status").textContent = `Analysis complete: ${data.summary.total_moves} moves classified.`;
+  } catch (error) { $("status").textContent = error.message; $("analysis").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
 }
 
-function renderReport() {
-  const s = analysis.summary;
-  const counts = s.counts;
-  let html = `
-    <p><b>${s.move_count}</b> plies analyzed.</p>
-    <p>
-      Inaccuracies: <b>${counts.Inaccuracy || 0}</b> ·
-      Mistakes: <b>${counts.Mistake || 0}</b> ·
-      Blunders: <b>${counts.Blunder || 0}</b>
-    </p>
-    <h3>Critical moments</h3>
-  `;
-
-  if (!analysis.critical.length) {
-    html += "<p>Nice. No major inaccuracies, mistakes, or blunders were detected at this depth.</p>";
-  } else {
-    analysis.critical.forEach(item => {
-      const best = item.best_move || "N/A";
-      html += `
-        <div class="issue">
-          <strong>${item.label}: ${item.player} move ${Math.ceil(item.ply / 2)} ${item.san}</strong>
-          <span>Best move: <b>${best}</b></span><br>
-          <span>Evaluation loss: ${(item.eval_loss_cp / 100).toFixed(2)} pawns</span>
-          <br><small>PV: ${item.best_pv.join(" ")}</small>
-        </div>
-      `;
-    });
-  }
-
-  $("report").innerHTML = html;
+async function engineStatus() {
+  try { const r = await fetch("/api/engine-status"); const s = await r.json(); $("engineStatus").textContent = s.available ? "● Stockfish online" : "○ Stockfish unavailable"; $("engineStatus").className = s.available ? "online" : "offline"; }
+  catch { $("engineStatus").textContent = "○ Engine status unknown"; }
 }
 
-$("loadBtn").onclick = loadGame;
-$("analyzeBtn").onclick = runAnalysis;
-$("firstBtn").onclick = () => { if (game) { currentPly = 0; updatePosition(); } };
-$("prevBtn").onclick = () => { if (game) { currentPly = Math.max(0, currentPly - 1); updatePosition(); } };
-$("nextBtn").onclick = () => { if (game) { currentPly = Math.min(game.moves.length, currentPly + 1); updatePosition(); } };
-$("lastBtn").onclick = () => { if (game) { currentPly = game.moves.length; updatePosition(); } };
+function init() {
+  $("loadBtn").addEventListener("click", loadGame); $("analyzeBtn").addEventListener("click", runAnalysis);
+  $("firstBtn").addEventListener("click", () => goToPly(0)); $("prevBtn").addEventListener("click", () => goToPly(currentPly - 1));
+  $("nextBtn").addEventListener("click", () => goToPly(currentPly + 1)); $("lastBtn").addEventListener("click", () => goToPly(game ? game.moves.length : 0));
+  renderBoard(); renderMoves(); updateControls(); engineStatus();
+}
+document.addEventListener("DOMContentLoaded", init);

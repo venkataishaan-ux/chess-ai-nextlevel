@@ -258,6 +258,7 @@ def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
                 "move_number": r["move_number"],
                 "side": r["side"],
                 "san": r["san"],
+                "label": r["label"],
                 "best_move": r["best_move_san"],
                 "eval_before": r["eval_before"],
                 "eval_after": r["eval_after"],

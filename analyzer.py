@@ -48,7 +48,10 @@ def _relative_loss(before_score, after_score, mover: chess.Color) -> int:
 
 
 def _best_info(engine, board: chess.Board, depth: int):
-    result = engine.analyse(board, depth=depth, multipv=1)
+    # Keep each engine call short enough for Render free instances. The
+    # selected depth remains the requested ceiling, while chess_engine also
+    # applies a small wall-clock limit.
+    result = engine.analyse(board, depth=depth, multipv=1, time_limit=0.18)
     if isinstance(result, list):
         result = result[0]
     return result
@@ -171,8 +174,11 @@ def _parse_game(pgn_text: str) -> chess.pgn.Game:
     return game
 
 
-def analyze_game(pgn_text: str, engine, depth: int = 14) -> dict[str, Any]:
+def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
     game = _parse_game(pgn_text)
+    # Render-safe ceiling. Depth is still user-selectable, but very deep
+    # settings should not be allowed to monopolize a free web worker.
+    depth = max(8, min(int(depth), 16))
     board = game.board()
     rows = []
 

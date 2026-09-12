@@ -95,7 +95,7 @@ async function loadGame() {
   try {
     const response = await fetch("/api/parse-pgn", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn}) });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load PGN.");
-    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V2.2 report.</div>';
+    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V3.0 report.</div>';
     goToPly(0); $("status").textContent = `Loaded ${data.moves.length} ply.`;
   } catch (error) { game = null; currentPly = 0; updateControls(); renderBoard(); renderMoves(); $("status").textContent = error.message; }
 }
@@ -115,6 +115,7 @@ function renderIssue(item) {
 
 function renderAnalysis(data) {
   const s = data.summary || {};
+  const training = data.training_plan || {};
   const moves = data.moves || [];
   const critical = data.critical || [];
   const blunders = data.blunder_breakdown || [];
@@ -130,13 +131,13 @@ function renderAnalysis(data) {
 
   $("analysis").innerHTML = `
     <section class="report-section"><h3>Opening</h3><p class="opening-name">${escapeHtml(data.opening || "Opening not identified")}</p></section>
-    <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div></section>
+    <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div><p><b>Estimated accuracy:</b> ${escapeHtml(s.accuracy_estimate ?? "n/a")}%</p></section>
     <section class="report-section"><h3>⚠️ Blunder Breakdown</h3>${breakdown}</section>
     <section class="report-section"><h3>🎯 Turning Points</h3>${turningHtml}</section>
     <section class="report-section"><h3>📌 Best Move</h3>${best}</section>
     <section class="report-section"><h3>💥 Worst Move</h3>${worst}</section>
     <section class="report-section"><h3>🔎 Critical Mistakes</h3>${criticalHtml}</section>
-    <section class="report-section"><h3>📋 Full Move-by-Move Breakdown</h3><div class="all-moves">${allMoves}</div></section>`;
+    <section class="report-section"><h3>📋 Full Move-by-Move Breakdown</h3><div class="all-moves">${allMoves}</div></section><section class="report-section"><h3>🧠 Personalized Training Plan</h3><ul>${(training.themes || []).map(t => `<li>${escapeHtml(t)}</li>`).join("")}</ul><p>${escapeHtml(training.next_step || "Review your critical moments and practice targeted puzzles.")}</p></section>`;
   renderMoves();
 }
 

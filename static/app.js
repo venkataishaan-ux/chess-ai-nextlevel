@@ -56,7 +56,10 @@ function renderBoard(fen = STARTING_FEN) {
       const sq = document.createElement("div");
       sq.className = `square ${(r + c) % 2 ? "dark" : "light"}`;
       const piece = board[r][c];
-      if (piece) sq.textContent = PIECES[piece] || "";
+      if (piece) {
+        sq.classList.add(piece === piece.toUpperCase() ? "white-piece" : "black-piece");
+        sq.textContent = PIECES[piece] || "";
+      }
       root.appendChild(sq);
     }
   }

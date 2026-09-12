@@ -13,20 +13,21 @@ class StockfishEngine:
         self._error = None
         try:
             self.engine = chess.engine.SimpleEngine.popen_uci(self.path)
+            # Render free instances have limited CPU/memory. One engine thread
+            # keeps analysis predictable and avoids spawning extra workers.
+            self.engine.configure({"Threads": 1, "Hash": 16})
         except Exception as exc:
             self._error = str(exc)
 
     def status(self):
-        return {
-            "available": self.engine is not None,
-            "path": self.path,
-            "error": self._error,
-        }
+        return {"available": self.engine is not None, "path": self.path, "error": self._error}
 
-    def analyse(self, board: chess.Board, depth: int = 14, multipv: int = 1):
+    def analyse(self, board: chess.Board, depth: int = 12, multipv: int = 1, time_limit: float = 0.18):
         if self.engine is None:
             raise RuntimeError(f"Stockfish is unavailable: {self._error or 'unknown error'}")
-        limit = chess.engine.Limit(depth=depth)
+        # Use whichever limit is reached first. This keeps HTTP requests from
+        # hitting Render/Gunicorn's worker timeout on longer games.
+        limit = chess.engine.Limit(depth=depth, time=time_limit)
         return self.engine.analyse(board, limit, multipv=multipv)
 
     def close(self):

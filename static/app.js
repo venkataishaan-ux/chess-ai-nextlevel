@@ -3,12 +3,14 @@ const PIECES = {
   p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚"
 };
 
+const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
+const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 let game = null;
 let currentPly = 0;
 let analysis = null;
 
 const $ = id => document.getElementById(id);
-const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 function setStatus(text) {
   const status = $("status");
@@ -24,41 +26,89 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-function emptyBoard() {
-  return Array.from({ length: 8 }, () => Array(8).fill(null));
-}
-
 function boardFromFen(fen) {
-  const board = emptyBoard();
-  const rows = String(fen || STARTING_FEN).split(" ")[0].split("/");
+  const board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  const placement = String(fen || STARTING_FEN).split(/\s+/)[0];
+  const rows = placement.split("/");
+
+  if (rows.length !== 8) throw new Error("Invalid FEN: expected 8 ranks.");
 
   rows.forEach((row, r) => {
     let c = 0;
     for (const char of row) {
-      if (/[1-8]/.test(char)) c += Number(char);
-      else if (c < 8) board[r][c++] = char;
+      if (/^[1-8]$/.test(char)) {
+        c += Number(char);
+      } else if (PIECES[char]) {
+        if (c >= 8) throw new Error("Invalid FEN: rank is too long.");
+        board[r][c++] = char;
+      } else {
+        throw new Error(`Invalid FEN piece: ${char}`);
+      }
     }
+    if (c !== 8) throw new Error("Invalid FEN: rank does not contain 8 squares.");
   });
 
   return board;
+}
+
+function squareName(row, col) {
+  return `${FILES[col]}${8 - row}`;
+}
+
+function getLastMove() {
+  if (!game || currentPly === 0) return null;
+  const move = game.moves[currentPly - 1];
+  if (!move || !move.uci || move.uci.length < 4) return null;
+  return { from: move.uci.slice(0, 2), to: move.uci.slice(2, 4) };
 }
 
 function renderBoard(fen = STARTING_FEN) {
   const root = $("board");
   if (!root) return;
 
-  const board = boardFromFen(fen);
+  let board;
+  try {
+    board = boardFromFen(fen);
+  } catch (error) {
+    console.error("Board render error:", error, fen);
+    setStatus(`Board error: ${error.message}`);
+    return;
+  }
+
+  const lastMove = getLastMove();
   root.innerHTML = "";
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const sq = document.createElement("div");
+      const name = squareName(r, c);
       sq.className = `square ${(r + c) % 2 ? "dark" : "light"}`;
+      sq.dataset.square = name;
+
+      if (lastMove && (name === lastMove.from || name === lastMove.to)) {
+        sq.classList.add("last-move");
+      }
 
       const piece = board[r][c];
       if (piece) {
-        sq.textContent = PIECES[piece] || "";
-        sq.classList.add(piece === piece.toUpperCase() ? "white-piece" : "black-piece");
+        const pieceEl = document.createElement("span");
+        pieceEl.className = `piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`;
+        pieceEl.textContent = PIECES[piece];
+        sq.appendChild(pieceEl);
+      }
+
+      // Coordinate labels make the board unambiguous and keep the grid looking like a real chessboard.
+      if (c === 0) {
+        const rank = document.createElement("span");
+        rank.className = "rank-label";
+        rank.textContent = String(8 - r);
+        sq.appendChild(rank);
+      }
+      if (r === 7) {
+        const file = document.createElement("span");
+        file.className = "file-label";
+        file.textContent = FILES[c];
+        sq.appendChild(file);
       }
 
       root.appendChild(sq);
@@ -153,6 +203,10 @@ async function loadGame() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not parse PGN.");
     if (!data.initial_fen || !Array.isArray(data.moves)) throw new Error("The server returned an invalid game response.");
+
+    for (const move of data.moves) {
+      if (!move.fen || !move.uci || !move.san) throw new Error("The server returned an incomplete move list.");
+    }
 
     game = data;
     analysis = null;

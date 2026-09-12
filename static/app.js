@@ -95,7 +95,7 @@ async function loadGame() {
   try {
     const response = await fetch("/api/parse-pgn", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn}) });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load PGN.");
-    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V2.1.5 report.</div>';
+    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V2.2 report.</div>';
     goToPly(0); $("status").textContent = `Loaded ${data.moves.length} ply.`;
   } catch (error) { game = null; currentPly = 0; updateControls(); renderBoard(); renderMoves(); $("status").textContent = error.message; }
 }
@@ -109,6 +109,7 @@ function renderIssue(item) {
     ${ex.headline ? `<p><b>What happened:</b> ${escapeHtml(ex.headline)}</p>` : ""}
     ${ex.why ? `<p><b>Why:</b> ${escapeHtml(ex.why)}</p>` : ""}
     ${ex.lesson ? `<p><b>Lesson:</b> ${escapeHtml(ex.lesson)}</p>` : ""}
+    ${item.variation?.length ? `<p><b>Suggested line:</b> <code>${escapeHtml(item.variation.join(" "))}</code></p>` : ""}
   </article>`;
 }
 
@@ -128,6 +129,7 @@ function renderAnalysis(data) {
   const allMoves = moves.map(renderIssue).join("");
 
   $("analysis").innerHTML = `
+    <section class="report-section"><h3>Opening</h3><p class="opening-name">${escapeHtml(data.opening || "Opening not identified")}</p></section>
     <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div></section>
     <section class="report-section"><h3>⚠️ Blunder Breakdown</h3>${breakdown}</section>
     <section class="report-section"><h3>🎯 Turning Points</h3>${turningHtml}</section>
@@ -142,7 +144,7 @@ async function runAnalysis() {
   const pgn = $("pgn").value.trim(); if (!pgn) { $("status").textContent = "Paste a PGN first."; return; }
   $("status").textContent = "Stockfish is calculating every move…"; $("analysis").innerHTML = '<div class="empty">Analyzing the full game…</div>';
   try {
-    const depth = Number($("depth").value) || 14;
+    const depth = Number($("depth").value) || 12;
     const response = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn, depth}) });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || "Analysis failed.");
     lastAnalysis = data; renderAnalysis(data); if (game) goToPly(currentPly); $("status").textContent = `Analysis complete: ${data.summary.total_moves} moves classified.`;

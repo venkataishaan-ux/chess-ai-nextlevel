@@ -3,19 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Chess Coach AI - V1</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>Chess Coach AI - V2.1</title>
+  <link rel="stylesheet" href="/static/style.css?v=2.1.3">
 </head>
 <body>
   <main class="app">
     <header>
-      <p class="eyebrow">♟ CHESS COACH AI</p>
-      <h1>Your game. Your mistakes. Your coach.</h1>
-      <p class="sub">V1: PGN replay + Stockfish analysis.</p>
+      <div>
+        <p class="eyebrow">♟ CHESS COACH AI · V2.1</p>
+        <h1>Your game. Your mistakes. Your next level.</h1>
+      </div>
+      <p class="sub">Replay your game, let Stockfish find the critical moments, then turn every mistake into a lesson.</p>
     </header>
 
     <section class="input-card">
-      <label for="pgn">Paste a PGN</label>
+      <div class="input-heading">
+        <div>
+          <label for="pgn">Game PGN</label>
+          <span>Paste a PGN from your chess game</span>
+        </div>
+        <span class="engine-pill"><i></i> Stockfish ready</span>
+      </div>
+
       <textarea id="pgn" placeholder='[Event "Example"]
 
 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6'></textarea>
@@ -24,42 +33,69 @@
         <label>
           Analysis depth
           <select id="depth">
-            <option value="12">12 - Fast</option>
-            <option value="14" selected>14 - Balanced</option>
-            <option value="18">18 - Deeper</option>
+            <option value="12">12 · Fast</option>
+            <option value="14" selected>14 · Balanced</option>
+            <option value="18">18 · Deep</option>
           </select>
         </label>
-        <button id="loadBtn">Load Game</button>
-        <button id="analyzeBtn" class="primary">Analyze with Stockfish</button>
+        <button id="loadBtn" type="button">Load Game</button>
+        <button id="analyzeBtn" type="button" class="primary">Analyze with Stockfish <span>→</span></button>
       </div>
       <p id="status"></p>
     </section>
 
     <section class="workspace">
       <div class="board-card">
-        <div id="board" class="board"></div>
+        <div class="card-topline">
+          <div>
+            <span class="card-kicker">GAME REPLAY</span>
+            <h2>Board</h2>
+          </div>
+          <span class="live-dot">LIVE</span>
+        </div>
+        <div class="board-wrap">
+          <div id="board" class="board"></div>
+        </div>
         <div class="navigation">
-          <button id="firstBtn">⏮</button>
-          <button id="prevBtn">◀</button>
+          <button id="firstBtn" type="button" aria-label="First move">⏮</button>
+          <button id="prevBtn" type="button" aria-label="Previous move">◀</button>
           <span id="moveLabel">Start</span>
-          <button id="nextBtn">▶</button>
-          <button id="lastBtn">⏭</button>
+          <button id="nextBtn" type="button" aria-label="Next move">▶</button>
+          <button id="lastBtn" type="button" aria-label="Last move">⏭</button>
         </div>
       </div>
 
       <div class="moves-card">
-        <h2>Moves</h2>
-        <div id="moves"></div>
+        <div class="card-topline">
+          <div>
+            <span class="card-kicker">REPLAY</span>
+            <h2>Moves</h2>
+          </div>
+          <span class="count-badge">PGN</span>
+        </div>
+        <div id="moves">
+          <p class="empty-state">Load a game to see the move list.</p>
+        </div>
       </div>
 
       <div class="report-card">
-        <h2>Coach Report</h2>
+        <div class="card-topline">
+          <div>
+            <span class="card-kicker">COACH MODE</span>
+            <h2>Coach Report</h2>
+          </div>
+          <span class="count-badge">AI</span>
+        </div>
         <div id="report">
-          <p>Load a PGN, then run Stockfish analysis.</p>
+          <div class="empty-report">
+            <div class="empty-icon">♞</div>
+            <h3>Your analysis will appear here</h3>
+            <p>Load a PGN, then run Stockfish analysis to find mistakes, missed opportunities, and better moves.</p>
+          </div>
         </div>
       </div>
     </section>
   </main>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2.1.3"></script>
 </body>
 </html>

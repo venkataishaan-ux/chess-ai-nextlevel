@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Chess Coach AI - V2.1</title>
-  <link rel="stylesheet" href="/static/style.css?v=2.1.2">
+  <link rel="stylesheet" href="/static/style.css?v=2.1.3">
 </head>
 <body>
   <main class="app">
@@ -38,8 +38,8 @@
             <option value="18">18 · Deep</option>
           </select>
         </label>
-        <button id="loadBtn">Load Game</button>
-        <button id="analyzeBtn" class="primary">Analyze with Stockfish <span>→</span></button>
+        <button id="loadBtn" type="button">Load Game</button>
+        <button id="analyzeBtn" type="button" class="primary">Analyze with Stockfish <span>→</span></button>
       </div>
       <p id="status"></p>
     </section>
@@ -57,11 +57,11 @@
           <div id="board" class="board"></div>
         </div>
         <div class="navigation">
-          <button id="firstBtn" aria-label="First move">⏮</button>
-          <button id="prevBtn" aria-label="Previous move">◀</button>
+          <button id="firstBtn" type="button" aria-label="First move">⏮</button>
+          <button id="prevBtn" type="button" aria-label="Previous move">◀</button>
           <span id="moveLabel">Start</span>
-          <button id="nextBtn" aria-label="Next move">▶</button>
-          <button id="lastBtn" aria-label="Last move">⏭</button>
+          <button id="nextBtn" type="button" aria-label="Next move">▶</button>
+          <button id="lastBtn" type="button" aria-label="Last move">⏭</button>
         </div>
       </div>
 
@@ -96,6 +96,6 @@
       </div>
     </section>
   </main>
-  <script src="/static/app.js?v=2.1.2"></script>
+  <script src="/static/app.js?v=2.1.3"></script>
 </body>
 </html>

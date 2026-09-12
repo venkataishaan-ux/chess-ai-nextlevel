@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, jsonify, render_template, request
+from io import StringIO
 import chess
 import chess.pgn
-from io import StringIO
 
-from chess_engine import StockfishEngine
 from analyzer import analyze_game
+from chess_engine import StockfishEngine
 
 app = Flask(__name__)
 engine = StockfishEngine()
@@ -19,15 +19,12 @@ def index():
 def parse_pgn():
     data = request.get_json(silent=True) or {}
     pgn_text = data.get("pgn", "").strip()
-
     if not pgn_text:
         return jsonify({"error": "Please provide a PGN."}), 400
-
     try:
         game = chess.pgn.read_game(StringIO(pgn_text))
         if game is None:
             raise ValueError("Could not parse the PGN.")
-
         board = game.board()
         moves = []
         for ply, move in enumerate(game.mainline_moves(), start=1):
@@ -35,11 +32,12 @@ def parse_pgn():
             board.push(move)
             moves.append({
                 "ply": ply,
+                "move_number": (ply + 1) // 2,
+                "side": "White" if board.turn == chess.BLACK else "Black",
                 "san": san,
                 "uci": move.uci(),
                 "fen": board.fen(),
             })
-
         return jsonify({
             "headers": dict(game.headers),
             "initial_fen": game.board().fen(),
@@ -54,14 +52,14 @@ def parse_pgn():
 def analyze():
     data = request.get_json(silent=True) or {}
     pgn_text = data.get("pgn", "").strip()
-    depth = max(8, min(int(data.get("depth", 14)), 24))
-
+    try:
+        depth = max(8, min(int(data.get("depth", 14)), 24))
+    except (TypeError, ValueError):
+        depth = 14
     if not pgn_text:
         return jsonify({"error": "Please provide a PGN."}), 400
-
     try:
-        result = analyze_game(pgn_text, engine, depth=depth)
-        return jsonify(result)
+        return jsonify(analyze_game(pgn_text, engine, depth=depth))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 400
 

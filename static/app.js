@@ -13,6 +13,15 @@ function setStatus(text) {
   $("status").textContent = text;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function emptyBoard() {
   return Array.from({length: 8}, () => Array(8).fill(null));
 }
@@ -124,6 +133,40 @@ async function runAnalysis() {
   setStatus("Analysis complete.");
 }
 
+function renderIssue(item) {
+  const explanation = item.explanation || {};
+  const best = explanation.best_move_san || item.best_move || "N/A";
+  const loss = (item.eval_loss_cp / 100).toFixed(2);
+  const pv = (item.best_pv || []).slice(0, 8).join(" ");
+
+  return `
+    <article class="issue">
+      <strong>${escapeHtml(item.label)}: ${escapeHtml(item.player)} move ${Math.ceil(item.ply / 2)} ${escapeHtml(item.san)}</strong>
+      <div class="coach-section">
+        <b>🧠 What happened</b>
+        <p>${escapeHtml(explanation.headline || "Stockfish found a difference between the played move and its preferred move.")}</p>
+      </div>
+      <div class="coach-section">
+        <b>🔎 Why it matters</b>
+        <p>${escapeHtml(explanation.why || `Evaluation loss: ${loss} pawns.`)}</p>
+      </div>
+      <div class="coach-section">
+        <b>👀 What you missed</b>
+        <p>${escapeHtml(explanation.missed || "Look for the opponent's strongest reply after your move.")}</p>
+      </div>
+      <div class="best-move">
+        <b>♟️ Better move:</b> ${escapeHtml(best)}
+      </div>
+      <div class="coach-section">
+        <b>🎯 Coach lesson</b>
+        <p>${escapeHtml(explanation.lesson || "Check your opponent's threats before moving.")}</p>
+      </div>
+      ${pv ? `<details><summary>Engine continuation</summary><small>${escapeHtml(pv)}</small></details>` : ""}
+      <small>Engine difference: ${escapeHtml(loss)} pawns</small>
+    </article>
+  `;
+}
+
 function renderReport() {
   const s = analysis.summary;
   const counts = s.counts;
@@ -141,15 +184,7 @@ function renderReport() {
     html += "<p>Nice. No major inaccuracies, mistakes, or blunders were detected at this depth.</p>";
   } else {
     analysis.critical.forEach(item => {
-      const best = item.best_move || "N/A";
-      html += `
-        <div class="issue">
-          <strong>${item.label}: ${item.player} move ${Math.ceil(item.ply / 2)} ${item.san}</strong>
-          <span>Best move: <b>${best}</b></span><br>
-          <span>Evaluation loss: ${(item.eval_loss_cp / 100).toFixed(2)} pawns</span>
-          <br><small>PV: ${item.best_pv.join(" ")}</small>
-        </div>
-      `;
+      html += renderIssue(item);
     });
   }
 

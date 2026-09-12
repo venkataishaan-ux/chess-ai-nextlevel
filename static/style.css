@@ -17,7 +17,6 @@
 }
 
 * { box-sizing: border-box; }
-
 html { min-height: 100%; }
 
 body {
@@ -56,7 +55,7 @@ header {
 
 h1 {
   margin: 0;
-  max-width: 760px;
+  max-width: 800px;
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: clamp(32px, 5vw, 58px);
   line-height: .98;
@@ -72,7 +71,7 @@ h1 {
 }
 
 .input-card, .board-card, .moves-card, .report-card {
-  background: rgba(18, 24, 32, .92);
+  background: rgba(18, 24, 32, .94);
   border: 1px solid var(--border);
   border-radius: 20px;
   box-shadow: 0 22px 70px rgba(0,0,0,.24);
@@ -83,17 +82,54 @@ h1 {
   margin-bottom: 18px;
 }
 
-.input-card > label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #dce2ea;
+.input-heading, .card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.input-heading > div { display: grid; gap: 4px; }
+
+.input-card > .input-heading label {
+  margin: 0;
+  color: #edf1f6;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.input-heading span:not(.engine-pill) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.engine-pill, .live-dot, .count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  color: #9ca9b9;
+  background: #171f29;
+  border: 1px solid #2b3642;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.engine-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(125,223,114,.7);
 }
 
 textarea {
   width: 100%;
   min-height: 150px;
+  margin-top: 13px;
   padding: 15px 16px;
   color: #e9edf3;
   background: #0d131a;
@@ -124,7 +160,7 @@ textarea::placeholder { color: #647081; }
   display: grid;
   gap: 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
@@ -142,13 +178,11 @@ select, button {
 }
 
 select { min-width: 128px; }
-
 button:hover {
   background: #202a36;
   border-color: #43505f;
   transform: translateY(-1px);
 }
-
 button:active { transform: translateY(0); }
 
 button.primary {
@@ -157,8 +191,8 @@ button.primary {
   border-color: var(--accent);
   font-weight: 800;
 }
-
 button.primary:hover { background: #94eb89; }
+button.primary span { margin-left: 5px; font-size: 16px; }
 
 #status {
   min-height: 18px;
@@ -175,10 +209,31 @@ button.primary:hover { background: #94eb89; }
 }
 
 .board-card, .moves-card, .report-card { padding: 18px; }
+.board-card { position: sticky; top: 18px; }
 
-.board-card {
-  position: sticky;
-  top: 18px;
+.card-topline { margin-bottom: 14px; }
+.card-topline > div { display: grid; gap: 3px; }
+.card-topline h2 {
+  margin: 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 17px;
+  letter-spacing: -.02em;
+}
+.card-kicker {
+  color: #6f7c8c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.live-dot { color: #a7e7a1; background: #142419; border-color: #274b2c; }
+.live-dot::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.count-badge { padding: 5px 8px; }
+
+.board-wrap {
+  padding: 5px;
+  border-radius: 16px;
+  background: #202832;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
 }
 
 .board {
@@ -187,9 +242,7 @@ button.primary:hover { background: #94eb89; }
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   overflow: hidden;
-  border: 5px solid #202832;
-  border-radius: 14px;
-  box-shadow: 0 18px 45px rgba(0,0,0,.35);
+  border-radius: 11px;
   background: #202832;
 }
 
@@ -202,19 +255,11 @@ button.primary:hover { background: #94eb89; }
   line-height: 1;
   user-select: none;
 }
-
 .light { background: var(--light-square); }
 .dark { background: var(--dark-square); }
 
-.black-piece {
-  color: #15191c;
-  text-shadow: 0 2px 1px rgba(255,255,255,.12);
-}
-
-.white-piece {
-  color: #f9fbfc;
-  text-shadow: 0 2px 2px rgba(0,0,0,.58), 0 0 1px #111;
-}
+.black-piece { color: #15191c; text-shadow: 0 2px 1px rgba(255,255,255,.12); }
+.white-piece { color: #f9fbfc; text-shadow: 0 2px 2px rgba(0,0,0,.58), 0 0 1px #111; }
 
 .navigation {
   display: flex;
@@ -223,14 +268,12 @@ button.primary:hover { background: #94eb89; }
   gap: 8px;
   margin-top: 15px;
 }
-
 .navigation button {
   width: 48px;
   min-height: 44px;
   padding: 8px;
   font-size: 16px;
 }
-
 #moveLabel {
   min-width: 110px;
   color: #f0f3f7;
@@ -239,17 +282,7 @@ button.primary:hover { background: #94eb89; }
   font-weight: 700;
 }
 
-.moves-card h2, .report-card h2 {
-  margin: 2px 0 15px;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 16px;
-  letter-spacing: -.01em;
-}
-
-.moves-card {
-  min-height: 300px;
-}
-
+.moves-card { min-height: 300px; }
 .moves-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -258,7 +291,6 @@ button.primary:hover { background: #94eb89; }
   overflow: auto;
   padding-right: 3px;
 }
-
 .move {
   padding: 8px 9px;
   color: #aeb8c5;
@@ -267,16 +299,27 @@ button.primary:hover { background: #94eb89; }
   font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
   transition: background .15s, color .15s;
 }
-
 .move:hover { color: #fff; background: #1b2530; }
 .move.active { color: #071007; background: var(--accent); font-weight: 800; }
 
-.report-card {
-  min-height: 300px;
-  max-height: 750px;
-  overflow: auto;
+.empty-state, .empty-report p { color: #687586; font-size: 12px; line-height: 1.6; }
+.empty-report { padding: 28px 10px 20px; text-align: center; }
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 13px;
+  color: #b8c3d0;
+  background: #1a232d;
+  border: 1px solid #2b3744;
+  border-radius: 14px;
+  font-size: 23px;
 }
+.empty-report h3 { margin: 0 0 7px; font-size: 14px; }
+.empty-report p { max-width: 300px; margin: 0 auto; }
 
+.report-card { min-height: 300px; max-height: 750px; overflow: auto; }
 .report-card > #report > p { color: var(--muted); line-height: 1.6; }
 
 .issue {
@@ -287,30 +330,10 @@ button.primary:hover { background: #94eb89; }
   border-left: 3px solid #e2a84d;
   border-radius: 12px;
 }
-
-.issue strong {
-  display: block;
-  margin-bottom: 13px;
-  color: #f5f7fb;
-  font-size: 13px;
-}
-
+.issue strong { display: block; margin-bottom: 13px; color: #f5f7fb; font-size: 13px; }
 .coach-section { margin: 12px 0; }
-
-.coach-section b {
-  color: #aeb8c5;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-}
-
-.coach-section p {
-  margin: 5px 0 0;
-  color: #d3d9e1;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
+.coach-section b { color: #aeb8c5; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.coach-section p { margin: 5px 0 0; color: #d3d9e1; font-size: 13px; line-height: 1.55; }
 .best-move {
   margin: 13px 0;
   padding: 12px;
@@ -320,28 +343,12 @@ button.primary:hover { background: #94eb89; }
   border-radius: 10px;
   font-size: 13px;
 }
-
-.issue details {
-  margin: 12px 0 5px;
-  color: var(--muted);
-}
-
-.issue summary {
-  cursor: pointer;
-  color: #b8c3d0;
-  font-size: 12px;
-}
-
-.issue small {
-  color: #687586;
-  font-size: 10px;
-}
+.issue details { margin: 12px 0 5px; color: var(--muted); }
+.issue summary { cursor: pointer; color: #b8c3d0; font-size: 12px; }
+.issue small { color: #687586; font-size: 10px; }
 
 .moves-list::-webkit-scrollbar, .report-card::-webkit-scrollbar { width: 7px; }
-.moves-list::-webkit-scrollbar-thumb, .report-card::-webkit-scrollbar-thumb {
-  background: #303b48;
-  border-radius: 20px;
-}
+.moves-list::-webkit-scrollbar-thumb, .report-card::-webkit-scrollbar-thumb { background: #303b48; border-radius: 20px; }
 
 @media (max-width: 1150px) {
   .workspace { grid-template-columns: minmax(420px, 1.3fr) minmax(230px, .7fr); }
@@ -359,7 +366,9 @@ button.primary:hover { background: #94eb89; }
 }
 
 @media (max-width: 480px) {
-  .controls > * { width: 100%; }
-  .controls button, .controls select { width: 100%; }
+  .app { padding-left: 10px; padding-right: 10px; }
+  .input-heading { align-items: flex-start; }
+  .engine-pill { display: none; }
+  .controls > *, .controls button, .controls select { width: 100%; }
   .board-card, .moves-card, .report-card, .input-card { border-radius: 16px; }
 }

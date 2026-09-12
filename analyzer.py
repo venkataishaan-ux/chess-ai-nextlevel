@@ -195,6 +195,17 @@ def _detect_opening(rows: list[dict[str, Any]]) -> str:
     return "Opening not identified"
 
 
+
+def _training_plan(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    counts = {label: sum(1 for r in rows if r["label"] == label) for label in ("Inaccuracy", "Mistake", "Blunder")}
+    themes = []
+    if any(r["move_facts"].get("check") for r in rows if r.get("move_facts")): themes.append("Calculate forcing checks and the opponent's replies.")
+    if any(r["move_facts"].get("capture") for r in rows if r.get("move_facts")): themes.append("Recalculate every capture, including recaptures and zwischenzugs.")
+    if counts["Blunder"]: themes.append("Practice blunder checks: opponent checks, captures, and threats.")
+    if counts["Mistake"]: themes.append("Pause before strategic moves and compare at least two candidate moves.")
+    if not themes: themes.append("Keep reviewing critical positions and explaining your candidate moves aloud.")
+    return {"themes": themes, "counts": counts, "next_step": "Solve 5 focused puzzles based on these themes, then replay this game without engine help."}
+
 def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
     game = _parse_game(pgn_text)
     # Render-safe ceiling. Depth is still user-selectable, but very deep
@@ -267,6 +278,7 @@ def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
         "opening": _detect_opening(rows),
         "summary": {
             "total_moves": len(rows),
+            "accuracy_estimate": round(max(0, 100 - (sum(r["loss_cp"] for r in rows) / max(1, len(rows)) / 10)), 1),
             "brilliant": len(brilliant),
             "good": len(good),
             "inaccuracies": len(inaccuracies),
@@ -293,4 +305,5 @@ def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
         "turning_points": turning_points,
         "best_move": best,
         "worst_move": worst,
+        "training_plan": _training_plan(rows),
     }

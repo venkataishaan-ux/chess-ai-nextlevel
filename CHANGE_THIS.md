@@ -1,4 +1,4 @@
-[CHANGE_THIS.md](https://github.com/user-attachments/files/32154706/CHANGE_THIS.md)
+[CHANGE_THIS.md](https://github.com/user-attachments/files/32155140/CHANGE_THIS.md)
 # Chess Coach AI v2.3 Change Pack
 
 Replace the matching files in your existing project with the files in this folder:

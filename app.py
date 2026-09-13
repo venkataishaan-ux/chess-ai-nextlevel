@@ -224,3 +224,74 @@ def screenshot_input():
         return jsonify({'error': 'The uploaded image is empty.'}), 400
     # Vision/OCR provider hook. A real model can be connected here later.
     return jsonify({'status': 'received', 'filename': name, 'message': 'Screenshot received. Vision/OCR is not configured yet; paste the detected FEN or PGN for exact reconstruction.', 'fen': None, 'pgn': None}), 200
+
+# --- Training features: bots, live coach, lessons, and weakness-based puzzles ---
+@app.get('/api/bot/move')
+def bot_move():
+    fen = request.args.get('fen', '').strip()
+    if not fen:
+        return jsonify({'error': 'FEN is required.'}), 400
+    try:
+        board = chess.Board(fen)
+        info = engine.analyse(board, depth=12, multipv=1, time_limit=0.25)
+        pv = info.get('pv') or []
+        if not pv:
+            return jsonify({'error': 'The engine returned no move.'}), 503
+        move = pv[0]
+        return jsonify({'uci': move.uci(), 'san': board.san(move), 'fen': board.fen()})
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
+@app.post('/api/coach/check')
+def coach_check():
+    data = request.get_json(silent=True) or {}
+    fen = str(data.get('fen', '')).strip()
+    uci = str(data.get('uci', '')).strip()
+    if not fen or not uci:
+        return jsonify({'error': 'FEN and UCI move are required.'}), 400
+    try:
+        board = chess.Board(fen)
+        move = chess.Move.from_uci(uci)
+        if move not in board.legal_moves:
+            return jsonify({'correct': False, 'label': 'Illegal', 'message': 'That move is not legal in this position.'})
+        san = board.san(move)
+        before = engine.analyse(board, depth=12, multipv=1, time_limit=0.25)
+        best = (before.get('pv') or [None])[0]
+        best_san = board.san(best) if best and best in board.legal_moves else None
+        board.push(move)
+        after = engine.analyse(board, depth=12, multipv=1, time_limit=0.25)
+        before_score = before.get('score').pov(not board.turn)
+        after_score = after.get('score').pov(not board.turn)
+        before_cp = before_score.score(mate_score=100000) or 0
+        after_cp = after_score.score(mate_score=100000) or 0
+        loss = max(0, before_cp - after_cp)
+        if best and move == best:
+            label, correct = 'Best move', True
+        elif loss >= 200:
+            label, correct = 'Blunder', False
+        elif loss >= 100:
+            label, correct = 'Mistake', False
+        elif loss >= 50:
+            label, correct = 'Inaccuracy', False
+        else:
+            label, correct = 'Playable', True
+        return jsonify({'correct': correct, 'label': label, 'san': san, 'best_move': best_san, 'loss_cp': loss,
+                        'message': f'{san}: {label}. ' + (f'Try {best_san}.' if best_san and best_san != san else 'Keep going!')})
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
+@app.post('/api/training-plan')
+def training_plan():
+    data = request.get_json(silent=True) or {}
+    report = data.get('report') or {}
+    summary = report.get('summary') or {}
+    weaknesses = []
+    if summary.get('blunders', 0) or summary.get('mistakes', 0):
+        weaknesses.append({'topic': 'Blunder prevention', 'reason': 'You are losing evaluation through tactical oversights.', 'lesson': 'Checks, captures, threats, and one-move blunder checks.', 'puzzle_type': 'hanging pieces'})
+    if summary.get('inaccuracies', 0):
+        weaknesses.append({'topic': 'Calculation and precision', 'reason': 'Several playable moves were not the most accurate.', 'lesson': 'Candidate moves and calculating the opponent’s best reply.', 'puzzle_type': 'best continuation'})
+    if not weaknesses:
+        weaknesses.append({'topic': 'Tactical sharpness', 'reason': 'No major weakness was detected in this sample.', 'lesson': 'Forks, pins, discovered attacks, and forcing moves.', 'puzzle_type': 'tactical pattern'})
+    return jsonify({'weaknesses': weaknesses, 'daily_plan': ['Review one lesson', 'Solve 5 focused puzzles', 'Replay one critical game position without engine help']})

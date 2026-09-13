@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/32154615/README.md)
+[README.md](https://github.com/user-attachments/files/32154676/README.md)
 # Chess Coach AI — V2.1.6
 
 Personalized chess analysis app built with Flask, python-chess, and Stockfish.

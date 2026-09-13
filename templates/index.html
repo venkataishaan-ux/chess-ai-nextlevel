@@ -46,7 +46,20 @@
       </div>
       <div class="card" style="margin-top:18px"><div class="card-head"><h2>Coach Report</h2></div><div id="analysis" class="report"><div class="empty">Run Stockfish analysis to generate the V2.3 report.</div></div></div>
     </section>
-  </main>
+  <div class="card" style="margin-top:18px"><div class="card-head"><h2>Training Lab</h2></div>
+<div class="actions"><button id="botBtn" class="secondary" type="button">Get Bot Move</button><button id="coachBtn" class="secondary" type="button">Check Coach Move</button><button id="planBtn" class="primary" type="button">Build Lessons & Puzzles</button></div>
+<div id="trainingOutput" class="status">Load a game first, then use the training tools.</div></div>
+      <div class="card coach-card" style="margin-top:18px">
+        <div class="card-head"><h2>Meet Your Chess Coaches</h2><span class="move-counter">Avatar mode</span></div>
+        <div class="coach-grid">
+          <button class="coach-avatar active" data-coach="friendly" type="button"><span class="avatar-face">🙂</span><strong>Friendly Coach</strong><small>Encouraging</small></button>
+          <button class="coach-avatar" data-coach="tactical" type="button"><span class="avatar-face">🧐</span><strong>Tactical Coach</strong><small>Precise</small></button>
+          <button class="coach-avatar" data-coach="roast" type="button"><span class="avatar-face">😏</span><strong>Roast Coach</strong><small>Playful</small></button>
+          <button class="coach-avatar" data-coach="puzzle" type="button"><span class="avatar-face">🤔</span><strong>Puzzle Coach</strong><small>Training-focused</small></button>
+        </div>
+        <div id="coachBubble" class="coach-bubble"><span id="coachBubbleFace">🙂</span><div><strong id="coachBubbleName">Friendly Coach</strong><p id="coachBubbleText">Load a game and I’ll explain your moves.</p></div></div>
+      </div>
+</main>
 </div>
 <script src="{{ url_for('static', filename='app.js') }}?v=2.1.5"></script>
 <section class="panel" style="margin-top:1rem"><h2>Personal Coach Profile</h2><button id="profileBtn">Build Profile From This Analysis</button><pre id="profileOutput"></pre></section>

@@ -1,654 +1,236 @@
+const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+let game = null;
+let currentPly = 0;
+let lastAnalysis = null;
 
-(() => {
-  "use strict";
+const PIECES = { P:"♙", N:"♘", B:"♗", R:"♖", Q:"♕", K:"♔", p:"♟", n:"♞", b:"♝", r:"♜", q:"♛", k:"♚" };
 
-  const STARTING_FEN =
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+function $(id) { return document.getElementById(id); }
+function escapeHtml(value) {
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+}
 
-  const PIECES = {
-    P: "♙",
-    N: "♘",
-    B: "♗",
-    R: "♖",
-    Q: "♕",
-    K: "♔",
-    p: "♟",
-    n: "♞",
-    b: "♝",
-    r: "♜",
-    q: "♛",
-    k: "♚"
-  };
-
-  let game = null;
-  let currentPly = 0;
-  let lastAnalysis = null;
-
-  const $ = (id) => document.getElementById(id);
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  function safeClass(value) {
-    return String(value ?? "unknown")
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, "-");
-  }
-
-  function setText(id, value) {
-    const element = $(id);
-    if (element) element.textContent = value;
-  }
-
-  function parseFen(fen) {
-    const boardPart = String(fen || "").trim().split(/\s+/)[0];
-    const rows = boardPart.split("/");
-
-    if (rows.length !== 8) {
-      throw new Error("Invalid FEN board.");
+function parseFen(fen) {
+  const rows = fen.split(" ")[0].split("/");
+  if (rows.length !== 8) throw new Error("Invalid FEN board.");
+  const board = [];
+  for (const row of rows) {
+    const cells = [];
+    for (const ch of row) {
+      if (/\d/.test(ch)) for (let i = 0; i < Number(ch); i++) cells.push(null);
+      else cells.push(ch);
     }
-
-    return rows.map((row) => {
-      const cells = [];
-
-      for (const character of row) {
-        if (/^[1-8]$/.test(character)) {
-          for (let i = 0; i < Number(character); i += 1) {
-            cells.push(null);
-          }
-        } else if (PIECES[character]) {
-          cells.push(character);
-        } else {
-          throw new Error("Invalid FEN piece.");
-        }
-      }
-
-      if (cells.length !== 8) {
-        throw new Error("Invalid FEN rank.");
-      }
-
-      return cells;
-    });
+    if (cells.length !== 8) throw new Error("Invalid FEN rank.");
+    board.push(cells);
   }
+  return board;
+}
 
-  function renderBoard(fen = STARTING_FEN) {
-    const board = $("board");
-    if (!board) return;
+function renderBoard(fen = STARTING_FEN) {
+  const boardEl = $("board");
+  const cells = parseFen(fen);
+  boardEl.innerHTML = "";
+  const analysisMove = lastAnalysis?.moves?.[currentPly - 1];
+  const lastUci = analysisMove?.uci;
 
-    let cells;
-
-    try {
-      cells = parseFen(fen);
-    } catch (error) {
-      board.textContent = error.message;
-      return;
+  cells.forEach((row, rankIndex) => row.forEach((piece, fileIndex) => {
+    const square = document.createElement("div");
+    square.className = `square ${((rankIndex + fileIndex) % 2 === 0) ? "light" : "dark"}`;
+    const squareName = String.fromCharCode(97 + fileIndex) + (8 - rankIndex);
+    square.dataset.square = squareName;
+    if (piece) {
+      const span = document.createElement("span");
+      span.className = `piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`;
+      span.textContent = PIECES[piece] || piece;
+      square.appendChild(span);
     }
-
-    board.innerHTML = "";
-
-    const analysisMove =
-      lastAnalysis &&
-      Array.isArray(lastAnalysis.moves) &&
-      currentPly > 0
-        ? lastAnalysis.moves[currentPly - 1]
-        : null;
-
-    const lastUci = analysisMove?.uci || "";
-
-    cells.forEach((row, rankIndex) => {
-      row.forEach((piece, fileIndex) => {
-        const square = document.createElement("div");
-
-        square.className =
-          "square " +
-          ((rankIndex + fileIndex) % 2 === 0 ? "light" : "dark");
-
-        const squareName =
-          String.fromCharCode(97 + fileIndex) + String(8 - rankIndex);
-
-        square.dataset.square = squareName;
-
-        if (piece) {
-          const pieceElement = document.createElement("span");
-
-          pieceElement.className =
-            "piece " +
-            (piece === piece.toUpperCase()
-              ? "white-piece"
-              : "black-piece");
-
-          pieceElement.textContent = PIECES[piece];
-          square.appendChild(pieceElement);
-        }
-
-        if (
-          lastUci &&
-          (squareName === lastUci.slice(0, 2) ||
-            squareName === lastUci.slice(2, 4))
-        ) {
-          square.classList.add("last-move");
-        }
-
-        if (fileIndex === 0) {
-          const rankLabel = document.createElement("span");
-          rankLabel.className = "rank-label";
-          rankLabel.textContent = String(8 - rankIndex);
-          square.appendChild(rankLabel);
-        }
-
-        if (rankIndex === 7) {
-          const fileLabel = document.createElement("span");
-          fileLabel.className = "file-label";
-          fileLabel.textContent = squareName[0];
-          square.appendChild(fileLabel);
-        }
-
-        board.appendChild(square);
-      });
-    });
-  }
-
-  function updateControls() {
-    const total = game?.moves?.length || 0;
-    const currentMove =
-      game && currentPly > 0 ? game.moves[currentPly - 1] : null;
-
-    setText(
-      "moveLabel",
-      currentMove ? `${currentMove.ply}. ${currentMove.san}` : "Start"
-    );
-
-    setText("moveCounter", `${currentPly} / ${total}`);
-
-    if ($("firstBtn")) $("firstBtn").disabled = currentPly <= 0;
-    if ($("prevBtn")) $("prevBtn").disabled = currentPly <= 0;
-    if ($("nextBtn")) $("nextBtn").disabled = !game || currentPly >= total;
-    if ($("lastBtn")) $("lastBtn").disabled = !game || currentPly >= total;
-  }
-
-  function renderMoves() {
-    const movesElement = $("moves");
-    if (!movesElement) return;
-
-    if (!game || !Array.isArray(game.moves) || game.moves.length === 0) {
-      movesElement.innerHTML = '<div class="empty">No moves loaded.</div>';
-      return;
+    if (lastUci && (squareName === lastUci.slice(0,2) || squareName === lastUci.slice(2,4))) square.classList.add("last-move");
+    if (fileIndex === 0) {
+      const rank = document.createElement("span"); rank.className = "rank-label"; rank.textContent = 8 - rankIndex; square.appendChild(rank);
     }
-
-    movesElement.innerHTML = "";
-
-    game.moves.forEach((move, index) => {
-      const button = document.createElement("button");
-
-      button.type = "button";
-      button.className =
-        "move " + (index + 1 === currentPly ? "active" : "");
-
-      const result =
-        lastAnalysis && Array.isArray(lastAnalysis.moves)
-          ? lastAnalysis.moves[index]
-          : null;
-
-      const label = result?.label || "";
-
-      const badge = label
-        ? `<span class="mini-badge ${safeClass(label)}">${escapeHtml(
-            label
-          )}</span>`
-        : "";
-
-      button.innerHTML =
-        `<span>${escapeHtml(move.ply)}. ${escapeHtml(move.san)}</span>` +
-        badge;
-
-      button.addEventListener("click", () => goToPly(index + 1));
-      movesElement.appendChild(button);
-    });
-  }
-
-  function goToPly(ply) {
-    if (!game || !Array.isArray(game.moves)) return;
-
-    currentPly = Math.max(
-      0,
-      Math.min(Number(ply) || 0, game.moves.length)
-    );
-
-    const fen =
-      currentPly === 0
-        ? game.initial_fen
-        : game.moves[currentPly - 1].fen;
-
-    renderBoard(fen || STARTING_FEN);
-    renderMoves();
-    updateControls();
-  }
-
-  async function loadGame() {
-    const pgnElement = $("pgn");
-    const pgn = pgnElement ? pgnElement.value.trim() : "";
-
-    if (!pgn) {
-      setText("status", "Paste a PGN first.");
-      return;
+    if (rankIndex === 7) {
+      const file = document.createElement("span"); file.className = "file-label"; file.textContent = squareName[0]; square.appendChild(file);
     }
-
-    setText("status", "Loading game...");
-
-    try {
-      const response = await fetch("/api/parse-pgn", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ pgn })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Could not load PGN.");
-      }
-
-      game = data;
-      currentPly = 0;
-      lastAnalysis = null;
-
-      if ($("analysis")) {
-        $("analysis").innerHTML =
-          '<div class="empty">Run Stockfish analysis to generate the report.</div>';
-      }
-
-      goToPly(0);
-      setText("status", `Loaded ${data.moves.length} ply.`);
-    } catch (error) {
-      game = null;
-      currentPly = 0;
-      lastAnalysis = null;
-
-      renderBoard();
-      renderMoves();
-      updateControls();
-
-      setText("status", error.message || "Could not load PGN.");
-    }
-  }
-
-  function makeBadge(label) {
-    return `<span class="badge ${safeClass(label)}">${escapeHtml(
-      label
-    )}</span>`;
-  }
-
-  async function requestRoast(item) {
-    const modeElement = $("roastMode");
-    const mode = modeElement ? modeElement.value : "off";
-
-    if (mode === "off" || !item) return;
-
-    try {
-      const response = await fetch("/api/roast", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          label: item.label,
-          san: item.san,
-          intensity: mode
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) return;
-
-      const ply = String(item.ply ?? "").replace(/[^0-9]/g, "");
-      const target = document.querySelector(
-        `[data-roast-ply="${ply}"]`
-      );
-
-      if (target) {
-        target.innerHTML =
-          `<b>Coach:</b> ${escapeHtml(data.roast || "")}<br>` +
-          `<b>Fix:</b> ${escapeHtml(data.advice || "")}`;
-      }
-    } catch (_) {
-      // Optional feature. Do not break the main report.
-    }
-  }
-
-  function renderIssue(item) {
-    const issue = item || {};
-    const explanation = issue.explanation || {};
-    const label = issue.label || "Unknown";
-    const ply = String(issue.ply ?? "").replace(/[^0-9]/g, "");
-
-    return `
-      <article class="issue ${safeClass(label)}">
-        <div class="issue-top">
-          <strong>
-            ${escapeHtml(issue.move_number ?? "?")}${issue.side === "White" ? "." : "..."}
-            ${escapeHtml(issue.san || "?")}
-          </strong>
-          ${makeBadge(label)}
-        </div>
-
-        <div class="issue-stats">
-          <span>
-            Loss:
-            <b>${escapeHtml(issue.loss_cp ?? "n/a")} cp</b>
-          </span>
-
-          <span>
-            Best:
-            <b>${escapeHtml(issue.best_move_san || "n/a")}</b>
-          </span>
-
-          <span>
-            Eval:
-            <b>
-              ${escapeHtml(issue.eval_before ?? "n/a")}
-              →
-              ${escapeHtml(issue.eval_after ?? "n/a")}
-            </b>
-          </span>
-        </div>
-
-        ${
-          explanation.headline
-            ? `<p><b>What happened:</b> ${escapeHtml(
-                explanation.headline
-              )}</p>`
-            : ""
-        }
-
-        ${
-          explanation.why
-            ? `<p><b>Why:</b> ${escapeHtml(explanation.why)}</p>`
-            : ""
-        }
-
-        ${
-          explanation.lesson
-            ? `<p><b>Lesson:</b> ${escapeHtml(explanation.lesson)}</p>`
-            : ""
-        }
-
-        <div class="roast" data-roast-ply="${ply}"></div>
-      </article>
-    `;
-  }
-
-  function renderAnalysis(data) {
-    const report = data || {};
-    const summary = report.summary || {};
-
-    const moves = Array.isArray(report.moves) ? report.moves : [];
-    const critical = Array.isArray(report.critical)
-      ? report.critical
-      : [];
-    const blunders = Array.isArray(report.blunder_breakdown)
-      ? report.blunder_breakdown
-      : [];
-    const turningPoints = Array.isArray(report.turning_points)
-      ? report.turning_points
-      : [];
-
-    const counts = [
-      ["Brilliant", summary.brilliant],
-      ["Good", summary.good],
-      ["Inaccuracy", summary.inaccuracies],
-      ["Mistake", summary.mistakes],
-      ["Blunder", summary.blunders]
-    ];
-
-    const countHtml = counts
-      .map(
-        ([label, count]) =>
-          `<div class="summary-card">
-            <span>${escapeHtml(label)}</span>
-            <strong>${escapeHtml(count ?? 0)}</strong>
-          </div>`
-      )
-      .join("");
-
-    const breakdownHtml = blunders.length
-      ? blunders.map(renderIssue).join("")
-      : '<div class="empty">No blunders detected at this depth. Good work.</div>';
-
-    const criticalHtml = critical.length
-      ? critical.map(renderIssue).join("")
-      : '<div class="empty">No inaccuracies, mistakes, or blunders detected.</div>';
-
-    const turningHtml = turningPoints.length
-      ? turningPoints.map(renderIssue).join("")
-      : '<div class="empty">No major turning points detected.</div>';
-
-    const bestHtml = report.best_move
-      ? renderIssue(report.best_move)
-      : '<div class="empty">No move data.</div>';
-
-    const worstHtml = report.worst_move
-      ? renderIssue(report.worst_move)
-      : '<div class="empty">No move data.</div>';
-
-    const allMovesHtml = moves.length
-      ? moves.map(renderIssue).join("")
-      : '<div class="empty">No move data.</div>';
-
-    const analysisElement = $("analysis");
-    if (!analysisElement) return;
-
-    analysisElement.innerHTML = `
-      <section class="report-section">
-        <h3>Move Classification</h3>
-        <div class="summary-grid">${countHtml}</div>
-      </section>
-
-      <section class="report-section">
-        <h3>⚠️ Blunder Breakdown</h3>
-        ${breakdownHtml}
-      </section>
-
-      <section class="report-section">
-        <h3>🎯 Turning Points</h3>
-        ${turningHtml}
-      </section>
-
-      <section class="report-section">
-        <h3>📌 Best Move</h3>
-        ${bestHtml}
-      </section>
-
-      <section class="report-section">
-        <h3>💥 Worst Move</h3>
-        ${worstHtml}
-      </section>
-
-      <section class="report-section">
-        <h3>🔎 Critical Mistakes</h3>
-        ${criticalHtml}
-      </section>
-
-      <section class="report-section">
-        <h3>📋 Full Move-by-Move Breakdown</h3>
-        <div class="all-moves">${allMovesHtml}</div>
-      </section>
-    `;
-
-    renderMoves();
-
-    const roastMode = $("roastMode");
-
-    if (roastMode && roastMode.value !== "off") {
-      moves.forEach(requestRoast);
-    }
-  }
-
-  async function runAnalysis() {
-    const pgnElement = $("pgn");
-    const pgn = pgnElement ? pgnElement.value.trim() : "";
-
-    if (!pgn) {
-      setText("status", "Paste a PGN first.");
-      return;
-    }
-
-    setText("status", "Stockfish is calculating every move...");
-
-    if ($("analysis")) {
-      $("analysis").innerHTML =
-        '<div class="empty">Analyzing the full game...</div>';
-    }
-
-    try {
-      const depthElement = $("depth");
-      const depth = depthElement
-        ? Number(depthElement.value) || 12
-        : 12;
-
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ pgn, depth })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Analysis failed.");
-      }
-
-      lastAnalysis = data;
-      window.lastReport = data;
-      window.analysisReport = data;
-
-      renderAnalysis(data);
-
-      if (game) {
-        goToPly(currentPly);
-      }
-
-      setText(
-        "status",
-        `Analysis complete: ${data.summary?.total_moves ?? 0} moves classified.`
-      );
-    } catch (error) {
-      setText("status", error.message || "Analysis failed.");
-
-      if ($("analysis")) {
-        $("analysis").innerHTML =
-          `<div class="empty">${escapeHtml(
-            error.message || "Analysis failed."
-          )}</div>`;
-      }
-    }
-  }
-
-  async function engineStatus() {
-    try {
-      const response = await fetch("/api/engine-status");
-      const status = await response.json();
-
-      const element = $("engineStatus");
-      if (!element) return;
-
-      element.textContent = status.available
-        ? "● Stockfish online"
-        : "○ Stockfish unavailable";
-
-      element.className = status.available ? "online" : "offline";
-    } catch (_) {
-      setText("engineStatus", "○ Engine status unknown");
-    }
-  }
-
-  async function uploadScreenshot() {
-    const input = $("screenshotInput");
-    const file = input?.files?.[0];
-
-    if (!file) {
-      setText("screenshotStatus", "Choose a screenshot first.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("image", file);
-
-    setText("screenshotStatus", "Uploading screenshot...");
-
-    try {
-      const response = await fetch("/api/screenshot", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Screenshot processing failed."
-        );
-      }
-
-      setText(
-        "screenshotStatus",
-        data.message || "Screenshot processed."
-      );
-    } catch (error) {
-      setText(
-        "screenshotStatus",
-        error.message || "Screenshot processing failed."
-      );
-    }
-  }
-
-  function init() {
-    const bindings = [
-      ["loadBtn", loadGame],
-      ["analyzeBtn", runAnalysis],
-      ["firstBtn", () => goToPly(0)],
-      ["prevBtn", () => goToPly(currentPly - 1)],
-      ["nextBtn", () => goToPly(currentPly + 1)],
-      ["lastBtn", () => goToPly(game ? game.moves.length : 0)],
-      ["uploadScreenshotBtn", uploadScreenshot]
-    ];
-
-    bindings.forEach(([id, handler]) => {
-      const element = $(id);
-
-      if (element) {
-        element.addEventListener("click", handler);
-      }
-    });
-
-    renderBoard();
-    renderMoves();
-    updateControls();
-    engineStatus();
-  }
-
-  window.ChessCoach = {
-    loadGame,
-    runAnalysis,
-    uploadScreenshot,
-    goToPly
-  };
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, {
-      once: true
-    });
-  } else {
-    init();
-  }
-})();
+    boardEl.appendChild(square);
+  }));
+}
+
+function updateControls() {
+  const total = game?.moves?.length ?? 0;
+  $("moveLabel").textContent = game ? (currentPly === 0 ? "Start" : `${game.moves[currentPly-1].ply}. ${game.moves[currentPly-1].san}`) : "Start";
+  $("moveCounter").textContent = game ? `${currentPly} / ${total}` : "0 / 0";
+  $("firstBtn").disabled = currentPly <= 0;
+  $("prevBtn").disabled = currentPly <= 0;
+  $("nextBtn").disabled = !game || currentPly >= total;
+  $("lastBtn").disabled = !game || currentPly >= total;
+}
+
+function renderMoves() {
+  const movesEl = $("moves");
+  if (!game?.moves?.length) { movesEl.innerHTML = '<div class="empty">No moves loaded.</div>'; return; }
+  movesEl.innerHTML = "";
+  game.moves.forEach((move, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `move ${index + 1 === currentPly ? "active" : ""}`;
+    const result = lastAnalysis?.moves?.[index];
+    const badge = result ? `<span class="mini-badge ${result.label.toLowerCase()}">${escapeHtml(result.label)}</span>` : "";
+    button.innerHTML = `<span>${move.ply}. ${escapeHtml(move.san)}</span>${badge}`;
+    button.addEventListener("click", () => goToPly(index + 1));
+    movesEl.appendChild(button);
+  });
+}
+
+function goToPly(ply) {
+  if (!game) return;
+  currentPly = Math.max(0, Math.min(ply, game.moves.length));
+  const fen = currentPly === 0 ? game.initial_fen : game.moves[currentPly - 1].fen;
+  renderBoard(fen); renderMoves(); updateControls();
+}
+
+async function loadGame() {
+  const pgn = $("pgn").value.trim();
+  if (!pgn) { $("status").textContent = "Paste a PGN first."; return; }
+  $("status").textContent = "Loading game…";
+  try {
+    const response = await fetch("/api/parse-pgn", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn}) });
+    const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load PGN.");
+    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V2.1.6 report.</div>';
+    goToPly(0); $("status").textContent = `Loaded ${data.moves.length} ply.`;
+  } catch (error) { game = null; currentPly = 0; updateControls(); renderBoard(); renderMoves(); $("status").textContent = error.message; }
+}
+
+
+const coachProfiles = {
+  friendly: {name: "Friendly Coach", face: "🙂", messages: {good: "That move is solid. Keep building your position.", bad: "No stress. Let’s understand the idea and try it again.", brilliant: "Excellent vision! You spotted something important."}},
+  tactical: {name: "Tactical Coach", face: "🧐", messages: {good: "Your move respects the tactical details.", bad: "Check forcing moves first: checks, captures, and threats.", brilliant: "Sharp calculation. That tactic was correctly executed."}},
+  roast: {name: "Roast Coach", face: "😏", messages: {good: "Clean move. Your pieces may now stop filing complaints.", bad: "That move left your position buffering at 1%.", brilliant: "Brilliant! The board just asked for your autograph."}},
+  puzzle: {name: "Puzzle Coach", face: "🤔", messages: {good: "Good pattern recognition. Save this idea for a puzzle.", bad: "This is a perfect puzzle theme to practise next.", brilliant: "Great tactical pattern. Let’s find two more like it."}}
+};
+let selectedCoach = "friendly";
+function setCoachMessage(kind, detail) {
+  const profile = coachProfiles[selectedCoach] || coachProfiles.friendly;
+  $("coachBubbleFace").textContent = profile.face;
+  $("coachBubbleName").textContent = profile.name;
+  $("coachBubbleText").textContent = detail || profile.messages[kind] || profile.messages.good;
+}
+function initCoachAvatars() {
+  document.querySelectorAll(".coach-avatar").forEach(button => button.addEventListener("click", () => {
+    selectedCoach = button.dataset.coach || "friendly";
+    document.querySelectorAll(".coach-avatar").forEach(b => b.classList.toggle("active", b === button));
+    setCoachMessage("good");
+  }));
+}
+
+function badge(label) { return `<span class="badge ${label.toLowerCase()}">${escapeHtml(label)}</span>`; }
+async function requestRoast(item) {
+  const mode = $("roastMode")?.value || "off";
+  if (mode === "off") return;
+  try {
+    const r = await fetch("/api/roast", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({label:item.label, san:item.san, intensity:mode})});
+    const data = await r.json();
+    const target = document.querySelector(`[data-roast="${CSS.escape(String(item.ply))}"]`);
+    if (target) target.innerHTML = `<b>Coach:</b> ${escapeHtml(data.roast)}<br><b>Fix:</b> ${escapeHtml(data.advice)}`;
+  } catch {}
+}
+
+function renderIssue(item) {
+  const ex = item.explanation || {};
+  return `<article class="issue ${item.label.toLowerCase()}">
+    <div class="issue-top"><strong>${escapeHtml(item.move_number)}${item.side === "White" ? "." : "..."} ${escapeHtml(item.san)}</strong>${badge(item.label)}</div>
+    <div class="issue-stats"><span>Loss: <b>${escapeHtml(item.loss_cp)} cp</b></span><span>Best: <b>${escapeHtml(item.best_move_san || "n/a")}</b></span><span>Eval: <b>${escapeHtml(item.eval_before)} → ${escapeHtml(item.eval_after)}</b></span></div>
+    ${ex.headline ? `<p><b>What happened:</b> ${escapeHtml(ex.headline)}</p>` : ""}
+    ${ex.why ? `<p><b>Why:</b> ${escapeHtml(ex.why)}</p>` : ""}
+    ${ex.lesson ? `<p><b>Lesson:</b> ${escapeHtml(ex.lesson)}</p>` : ""}
+  <div class="roast" data-roast="${escapeHtml(item.ply)}"></div></article>`;
+}
+
+function renderAnalysis(data) {
+  setCoachMessage("good", "Your analysis is ready. Let’s inspect the important moments together.");
+  const s = data.summary || {};
+  const moves = data.moves || [];
+  const critical = data.critical || [];
+  const blunders = data.blunder_breakdown || [];
+  const turning = data.turning_points || [];
+  const counts = [["Brilliant",s.brilliant], ["Good",s.good], ["Inaccuracy",s.inaccuracies], ["Mistake",s.mistakes], ["Blunder",s.blunders]];
+  const countHtml = counts.map(([label,n]) => `<div class="summary-card"><span>${label}</span><strong>${n ?? 0}</strong></div>`).join("");
+  const breakdown = blunders.length ? blunders.map(renderIssue).join("") : '<div class="empty">No blunders detected at this depth. That is a good thing. 🧠</div>';
+  const criticalHtml = critical.length ? critical.map(renderIssue).join("") : '<div class="empty">No inaccuracies, mistakes, or blunders detected.</div>';
+  const turningHtml = turning.length ? turning.map(renderIssue).join("") : '<div class="empty">No major turning points detected.</div>';
+  const best = data.best_move ? renderIssue(data.best_move) : '<div class="empty">No move data.</div>';
+  const worst = data.worst_move ? renderIssue(data.worst_move) : '<div class="empty">No move data.</div>';
+  const allMoves = moves.map(renderIssue).join("");
+
+  $("analysis").innerHTML = `
+    <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div></section>
+    <section class="report-section"><h3>⚠️ Blunder Breakdown</h3>${breakdown}</section>
+    <section class="report-section"><h3>🎯 Turning Points</h3>${turningHtml}</section>
+    <section class="report-section"><h3>📌 Best Move</h3>${best}</section>
+    <section class="report-section"><h3>💥 Worst Move</h3>${worst}</section>
+    <section class="report-section"><h3>🔎 Critical Mistakes</h3>${criticalHtml}</section>
+    <section class="report-section"><h3>📋 Full Move-by-Move Breakdown</h3><div class="all-moves">${allMoves}</div></section>`;
+  renderMoves();
+  if ($("roastMode")?.value !== "off") moves.forEach(requestRoast);
+}
+
+async function runAnalysis() {
+  const pgn = $("pgn").value.trim(); if (!pgn) { $("status").textContent = "Paste a PGN first."; return; }
+  $("status").textContent = "Stockfish is calculating every move…"; $("analysis").innerHTML = '<div class="empty">Analyzing the full game…</div>';
+  try {
+    const depth = Number($("depth").value) || 12;
+    const response = await fetch("/api/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn, depth}) });
+    const data = await response.json(); if (!response.ok) throw new Error(data.error || "Analysis failed.");
+    lastAnalysis = data; renderAnalysis(data); if (game) goToPly(currentPly); $("status").textContent = `Analysis complete: ${data.summary.total_moves} moves classified.`;
+  } catch (error) { $("status").textContent = error.message; $("analysis").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; }
+}
+
+async function engineStatus() {
+  try { const r = await fetch("/api/engine-status"); const s = await r.json(); $("engineStatus").textContent = s.available ? "● Stockfish online" : "○ Stockfish unavailable"; $("engineStatus").className = s.available ? "online" : "offline"; }
+  catch { $("engineStatus").textContent = "○ Engine status unknown"; }
+}
+
+async function getBotMove() {
+  const fen = game ? (currentPly === 0 ? game.initial_fen : game.moves[currentPly - 1].fen) : STARTING_FEN;
+  const r = await fetch('/api/bot/move?fen=' + encodeURIComponent(fen));
+  const d = await r.json();
+  $("trainingOutput").textContent = r.ok ? `Bot suggests ${d.san} (${d.uci}).` : (d.error || 'Bot unavailable.');
+}
+
+async function checkCoachMove() {
+  const fen = game ? (currentPly === 0 ? game.initial_fen : game.moves[currentPly - 1].fen) : STARTING_FEN;
+  const uci = prompt('Enter a move in UCI format, for example e2e4:');
+  if (!uci) return;
+  const r = await fetch('/api/coach/check', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({fen, uci})});
+  const d = await r.json();
+  $("trainingOutput").textContent = r.ok ? d.message : (d.error || 'Coach check failed.');
+}
+
+async function buildTrainingPlan() {
+  const r = await fetch('/api/training-plan', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({report:lastAnalysis || {}})});
+  const d = await r.json();
+  if (!r.ok) { $("trainingOutput").textContent = d.error || 'Could not build plan.'; return; }
+  $("trainingOutput").innerHTML = `<b>Personalized plan</b><br>${d.weaknesses.map(w => `${escapeHtml(w.topic)}: ${escapeHtml(w.lesson)}<br><small>${escapeHtml(w.puzzle_type)}</small>`).join('<hr>')}<br><b>Daily routine:</b> ${d.daily_plan.map(escapeHtml).join(' • ')}`;
+}
+
+function init() {
+  $("loadBtn").addEventListener("click", loadGame); $("analyzeBtn").addEventListener("click", runAnalysis);
+  $("firstBtn").addEventListener("click", () => goToPly(0)); $("prevBtn").addEventListener("click", () => goToPly(currentPly - 1));
+  $("nextBtn").addEventListener("click", () => goToPly(currentPly + 1)); $("lastBtn").addEventListener("click", () => goToPly(game ? game.moves.length : 0));
+  renderBoard(); renderMoves(); updateControls(); engineStatus(); initCoachAvatars(); setCoachMessage("good");
+  $("botBtn")?.addEventListener("click", getBotMove);
+  $("coachBtn")?.addEventListener("click", checkCoachMove);
+  $("planBtn")?.addEventListener("click", buildTrainingPlan);
+}
+document.addEventListener("DOMContentLoaded", init);
+
+
+async function uploadScreenshot() {
+  const input = $("screenshotInput"); const file = input?.files?.[0];
+  if (!file) { $("screenshotStatus").textContent = "Choose a screenshot first."; return; }
+  const form = new FormData(); form.append("image", file);
+  $("screenshotStatus").textContent = "Uploading screenshot…";
+  try { const r = await fetch('/api/screenshot', {method:'POST', body:form}); const data=await r.json(); if(!r.ok) throw new Error(data.error); $("screenshotStatus").textContent=data.message; } catch(e) { $("screenshotStatus").textContent=e.message; }
+}
+
+const originalInit = init;
+init = function() { originalInit(); $("uploadScreenshotBtn")?.addEventListener("click", uploadScreenshot); };

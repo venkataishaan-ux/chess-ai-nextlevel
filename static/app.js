@@ -95,12 +95,23 @@ async function loadGame() {
   try {
     const response = await fetch("/api/parse-pgn", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({pgn}) });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not load PGN.");
-    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V3.0 report.</div>';
+    game = data; currentPly = 0; lastAnalysis = null; $("analysis").innerHTML = '<div class="empty">Run Stockfish analysis to generate the V2.1.6 report.</div>';
     goToPly(0); $("status").textContent = `Loaded ${data.moves.length} ply.`;
   } catch (error) { game = null; currentPly = 0; updateControls(); renderBoard(); renderMoves(); $("status").textContent = error.message; }
 }
 
 function badge(label) { return `<span class="badge ${label.toLowerCase()}">${escapeHtml(label)}</span>`; }
+async function requestRoast(item) {
+  const mode = $("roastMode")?.value || "off";
+  if (mode === "off") return;
+  try {
+    const r = await fetch("/api/roast", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({label:item.label, san:item.san, intensity:mode})});
+    const data = await r.json();
+    const target = document.querySelector(`[data-roast="${CSS.escape(String(item.ply))}"]`);
+    if (target) target.innerHTML = `<b>Coach:</b> ${escapeHtml(data.roast)}<br><b>Fix:</b> ${escapeHtml(data.advice)}`;
+  } catch {}
+}
+
 function renderIssue(item) {
   const ex = item.explanation || {};
   return `<article class="issue ${item.label.toLowerCase()}">
@@ -109,13 +120,11 @@ function renderIssue(item) {
     ${ex.headline ? `<p><b>What happened:</b> ${escapeHtml(ex.headline)}</p>` : ""}
     ${ex.why ? `<p><b>Why:</b> ${escapeHtml(ex.why)}</p>` : ""}
     ${ex.lesson ? `<p><b>Lesson:</b> ${escapeHtml(ex.lesson)}</p>` : ""}
-    ${item.variation?.length ? `<p><b>Suggested line:</b> <code>${escapeHtml(item.variation.join(" "))}</code></p>` : ""}
-  </article>`;
+  <div class="roast" data-roast="${escapeHtml(item.ply)}"></div></article>`;
 }
 
 function renderAnalysis(data) {
   const s = data.summary || {};
-  const training = data.training_plan || {};
   const moves = data.moves || [];
   const critical = data.critical || [];
   const blunders = data.blunder_breakdown || [];
@@ -130,15 +139,15 @@ function renderAnalysis(data) {
   const allMoves = moves.map(renderIssue).join("");
 
   $("analysis").innerHTML = `
-    <section class="report-section"><h3>Opening</h3><p class="opening-name">${escapeHtml(data.opening || "Opening not identified")}</p></section>
-    <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div><p><b>Estimated accuracy:</b> ${escapeHtml(s.accuracy_estimate ?? "n/a")}%</p></section>
+    <section class="report-section"><h3>Move Classification</h3><div class="summary-grid">${countHtml}</div></section>
     <section class="report-section"><h3>⚠️ Blunder Breakdown</h3>${breakdown}</section>
     <section class="report-section"><h3>🎯 Turning Points</h3>${turningHtml}</section>
     <section class="report-section"><h3>📌 Best Move</h3>${best}</section>
     <section class="report-section"><h3>💥 Worst Move</h3>${worst}</section>
     <section class="report-section"><h3>🔎 Critical Mistakes</h3>${criticalHtml}</section>
-    <section class="report-section"><h3>📋 Full Move-by-Move Breakdown</h3><div class="all-moves">${allMoves}</div></section><section class="report-section"><h3>🧠 Personalized Training Plan</h3><ul>${(training.themes || []).map(t => `<li>${escapeHtml(t)}</li>`).join("")}</ul><p>${escapeHtml(training.next_step || "Review your critical moments and practice targeted puzzles.")}</p></section>`;
+    <section class="report-section"><h3>📋 Full Move-by-Move Breakdown</h3><div class="all-moves">${allMoves}</div></section>`;
   renderMoves();
+  if ($("roastMode")?.value !== "off") moves.forEach(requestRoast);
 }
 
 async function runAnalysis() {
@@ -164,3 +173,15 @@ function init() {
   renderBoard(); renderMoves(); updateControls(); engineStatus();
 }
 document.addEventListener("DOMContentLoaded", init);
+
+
+async function uploadScreenshot() {
+  const input = $("screenshotInput"); const file = input?.files?.[0];
+  if (!file) { $("screenshotStatus").textContent = "Choose a screenshot first."; return; }
+  const form = new FormData(); form.append("image", file);
+  $("screenshotStatus").textContent = "Uploading screenshot…";
+  try { const r = await fetch('/api/screenshot', {method:'POST', body:form}); const data=await r.json(); if(!r.ok) throw new Error(data.error); $("screenshotStatus").textContent=data.message; } catch(e) { $("screenshotStatus").textContent=e.message; }
+}
+
+const originalInit = init;
+init = function() { originalInit(); $("uploadScreenshotBtn")?.addEventListener("click", uploadScreenshot); };

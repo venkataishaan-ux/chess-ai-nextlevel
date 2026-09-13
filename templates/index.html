@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chess Coach AI • V3.0</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0.0">
+  <title>Chess Coach AI • V2.3</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.1.5">
 </head>
 <body>
 <div class="app">
   <header class="header">
-    <div><div class="eyebrow">Chess Coach AI</div><h1>Analyze. Understand. Improve. ♟️</h1><p class="subtitle">V3.0 • Full move classification + blunder breakdown</p></div>
+    <div><div class="eyebrow">Chess Coach AI</div><h1>Analyze. Understand. Improve. ♟️</h1><p class="subtitle">V2.3 • Full move classification + blunder breakdown</p></div>
     <div id="engineStatus" class="engine">Checking Stockfish…</div>
   </header>
   <main class="layout">
     <section>
       <div class="card">
-        <div class="card-head"><h2>Board Replay</h2><span class="move-counter">V3.0</span></div>
+        <div class="card-head"><h2>Board Replay</h2><span class="move-counter">V2.3</span></div>
         <div class="board-wrap"><div id="board" class="board" aria-label="Chess board"></div></div>
         <div class="controls">
           <button id="firstBtn" class="nav" type="button" aria-label="First move">⏮</button>
@@ -31,7 +31,7 @@
     <section>
       <div class="card panel">
         <div class="card-head" style="padding:0 0 10px"><h2>Game Input</h2></div>
-        <textarea id="pgn" placeholder="Paste a PGN here…">[Event "V3.0 Test"]
+        <textarea id="pgn" placeholder="Paste a PGN here…">[Event "V2.3 Test"]
 [White "White"]
 [Black "Black"]
 
@@ -39,12 +39,24 @@
 6. Nc3 d6 7. Bg5 h6 8. Bh4 g5 9. Nxg5</textarea>
         <div class="actions"><button id="loadBtn" class="secondary" type="button">Load Game</button><button id="analyzeBtn" class="primary" type="button">Analyze with Stockfish</button></div>
         <div class="options"><label for="depth">Depth</label><select id="depth"><option value="10">10 • Fast</option><option value="12" selected>12 • Balanced</option><option value="14">14 • Deeper</option><option value="16">16 • Deep</option></select></div>
+        <div class="options"><label for="roastMode">Sassy/Roast Coach</label><select id="roastMode"><option value="off">Off</option><option value="gentle">Gentle</option><option value="playful" selected>Playful</option><option value="spicy">Spicy</option></select></div>
+        <div class="options"><label for="screenshotInput">Screenshot input</label><input id="screenshotInput" type="file" accept="image/png,image/jpeg,image/webp"><button id="uploadScreenshotBtn" class="secondary" type="button">Process Screenshot</button></div>
+        <div id="screenshotStatus" class="status">Screenshots are accepted; connect a vision/OCR provider for automatic board recognition.</div>
         <div id="status" class="status">Ready.</div>
       </div>
-      <div class="card" style="margin-top:18px"><div class="card-head"><h2>Coach Report</h2></div><div id="analysis" class="report"><div class="empty">Run Stockfish analysis to generate the V3.0 report.</div></div></div>
+      <div class="card" style="margin-top:18px"><div class="card-head"><h2>Coach Report</h2></div><div id="analysis" class="report"><div class="empty">Run Stockfish analysis to generate the V2.3 report.</div></div></div>
     </section>
   </main>
 </div>
-<script src="{{ url_for('static', filename='app.js') }}?v=3.0.0"></script>
-</body>
+<script src="{{ url_for('static', filename='app.js') }}?v=2.1.5"></script>
+<section class="panel" style="margin-top:1rem"><h2>Personal Coach Profile</h2><button id="profileBtn">Build Profile From This Analysis</button><pre id="profileOutput"></pre></section>
+<script>
+document.getElementById('profileBtn')?.addEventListener('click', async () => {
+ const out=document.getElementById('profileOutput'); out.textContent='Building profile...';
+ const report=window.lastReport || window.analysisReport || null;
+ const games=report ? [report] : [];
+ const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({games})});
+ out.textContent=JSON.stringify(await r.json(),null,2);
+});
+</script></body>
 </html>

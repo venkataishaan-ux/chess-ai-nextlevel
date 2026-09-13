@@ -174,38 +174,6 @@ def _parse_game(pgn_text: str) -> chess.pgn.Game:
     return game
 
 
-def _detect_opening(rows: list[dict[str, Any]]) -> str:
-    moves = [r["san"] for r in rows[:8]]
-    key = " ".join(moves[:4])
-    openings = {
-        "e4 e5 Nf3 Nc6 Bb5": "Ruy Lopez",
-        "e4 e5 Nf3 Nc6 Bc4": "Italian Game",
-        "e4 c5": "Sicilian Defense",
-        "e4 e6": "French Defense",
-        "e4 c6": "Caro-Kann Defense",
-        "d4 d5 c4": "Queen's Gambit",
-        "d4 Nf6 c4": "Indian Game",
-        "c4": "English Opening",
-        "e4 e5 Nc3": "Vienna Game",
-        "e4 e5 Nf3 d5": "Scotch Game",
-    }
-    for prefix, name in sorted(openings.items(), key=lambda x: len(x[0]), reverse=True):
-        if " ".join(moves).startswith(prefix):
-            return name
-    return "Opening not identified"
-
-
-
-def _training_plan(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    counts = {label: sum(1 for r in rows if r["label"] == label) for label in ("Inaccuracy", "Mistake", "Blunder")}
-    themes = []
-    if any(r["move_facts"].get("check") for r in rows if r.get("move_facts")): themes.append("Calculate forcing checks and the opponent's replies.")
-    if any(r["move_facts"].get("capture") for r in rows if r.get("move_facts")): themes.append("Recalculate every capture, including recaptures and zwischenzugs.")
-    if counts["Blunder"]: themes.append("Practice blunder checks: opponent checks, captures, and threats.")
-    if counts["Mistake"]: themes.append("Pause before strategic moves and compare at least two candidate moves.")
-    if not themes: themes.append("Keep reviewing critical positions and explaining your candidate moves aloud.")
-    return {"themes": themes, "counts": counts, "next_step": "Solve 5 focused puzzles based on these themes, then replay this game without engine help."}
-
 def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
     game = _parse_game(pgn_text)
     # Render-safe ceiling. Depth is still user-selectable, but very deep
@@ -243,7 +211,6 @@ def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
             "label": label,
             "loss_cp": loss,
             "best_move_san": before.san(best_move) if best_move and best_move in before.legal_moves else None,
-            "variation": _pv_san(before, before_info.get("pv", []), max_moves=8),
             "eval_before": _score_label(*_score_cp(best_score, mover)),
             "eval_after": _score_label(*_score_cp(after_score, mover)),
             "fen": after.fen(),
@@ -275,10 +242,8 @@ def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
 
     return {
         "headers": dict(game.headers),
-        "opening": _detect_opening(rows),
         "summary": {
             "total_moves": len(rows),
-            "accuracy_estimate": round(max(0, 100 - (sum(r["loss_cp"] for r in rows) / max(1, len(rows)) / 10)), 1),
             "brilliant": len(brilliant),
             "good": len(good),
             "inaccuracies": len(inaccuracies),
@@ -305,5 +270,4 @@ def analyze_game(pgn_text: str, engine, depth: int = 12) -> dict[str, Any]:
         "turning_points": turning_points,
         "best_move": best,
         "worst_move": worst,
-        "training_plan": _training_plan(rows),
     }

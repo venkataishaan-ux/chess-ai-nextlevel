@@ -103,22 +103,113 @@ def profile():
     }, 'note': 'These are rough coaching indicators, not official Elo ratings.'})
 
 
+ROAST_BANK = {
+    'gentle': {
+        'blunder': [
+            'That move dropped material. Let’s slow down and check what is defended.',
+            'The position had a small trap, and this move stepped right into it.',
+            'A costly moment, but every blunder is a useful training clue.',
+        ],
+        'mistake': [
+            'That move was playable-looking, but one more safety check would help.',
+            'The idea was understandable. The calculation just needed one extra beat.',
+            'A little too optimistic. Check the opponent’s reply before committing.',
+        ],
+        'inaccuracy': [
+            'Slightly imprecise. A stronger move was hiding nearby.',
+            'Not disastrous, just a small opportunity missed.',
+            'The move works, but the position offered a cleaner option.',
+        ],
+        'good': ['Nice, sensible chess. Keep checking the opponent’s threats.'],
+        'brilliant': ['Excellent find. That move spotted something important in the position.'],
+    },
+    'playful': {
+        'blunder': [
+            'That move donated material. The opponent should at least send a thank-you note.',
+            'The chessboard just opened a lost-and-found department for your pieces.',
+            'You played “surprise me” and unfortunately surprised your own army.',
+            'That was not a sacrifice. That was a very generous subscription plan.',
+            'Your piece has officially changed teams without telling you.',
+        ],
+        'mistake': [
+            'That move had grandmaster confidence and calculator-battery percentage.',
+            'The idea was spicy, but the position requested less hot sauce.',
+            'You saw a plan. The board saw a plot twist.',
+            'That move walked into the room before checking whether the room was safe.',
+            'A decent idea wearing slightly mismatched shoes.',
+        ],
+        'inaccuracy': [
+            'The move is legal, but the position wanted a little more seasoning.',
+            'Not a disaster. Just a tiny tactical banana peel.',
+            'The engine found a cleaner route. Your move took the scenic tour.',
+            'A respectable move with one eyebrow raised by the chess gods.',
+            'You were close. The position hid the answer behind a curtain.',
+        ],
+        'good': [
+            'Solid move. The chess gremlins have temporarily approved your application.',
+            'Clean and useful. No fireworks, just proper chess.',
+            'Nice move. Your pieces are beginning to trust you again.',
+        ],
+        'brilliant': [
+            'Okay, tactical chef, that was genuinely spicy.',
+            'That move had main-character energy and actual calculation to back it up.',
+            'Beautiful find. The opponent’s position just received a software update.',
+        ],
+    },
+    'spicy': {
+        'blunder': [
+            'That move was a full material giveaway. Even the pawns are asking questions.',
+            'You did not lose a piece. You launched a donation campaign.',
+            'The opponent’s calculator made one click and your position started smoking.',
+            'That move belongs in a museum titled “What Was the Plan?”',
+            'Your piece saw the danger, packed a bag, and left anyway.',
+        ],
+        'mistake': [
+            'That move was confidently incorrect with premium packaging.',
+            'The plan had potential, but the calculation was still loading.',
+            'You challenged the position to a duel and forgot to bring a weapon.',
+            'The move looked clever until the opponent was allowed to respond.',
+            'A bold idea, powered by approximately three seconds of thought.',
+        ],
+        'inaccuracy': [
+            'Not terrible, but the engine found a move with fewer decorative mistakes.',
+            'You chose the second-best road and paid a small toll.',
+            'The position asked for precision. You supplied personality.',
+            'A tiny slip, but chess is very good at charging interest.',
+            'The move survived, although it did not exactly impress the jury.',
+        ],
+        'good': [
+            'Good move. Your pieces may now stop drafting a formal complaint.',
+            'Correct and practical. The board is no longer in emergency mode.',
+            'That was clean. Keep this level of discipline going.',
+        ],
+        'brilliant': [
+            'That was outrageous in the best possible way. Proper tactical cooking.',
+            'You found the move the position was trying to hide. Respect.',
+            'Brilliant. The opponent’s pieces are currently holding a crisis meeting.',
+        ],
+    },
+}
+
+
 @app.post('/api/roast')
 def roast():
     data = request.get_json(silent=True) or {}
-    label = str(data.get('label', 'mistake')).lower()
-    san = data.get('san', 'that move')
-    intensity = str(data.get('intensity', 'playful')).lower()
-    lines = {
-        'blunder': 'That move donated material to the opponent. The chessboard is not a charity drive.',
-        'mistake': 'That move had the confidence of a grandmaster and the calculation of a sleepy toaster.',
-        'inaccuracy': 'A little wobbly. The position asked for precision, and this move brought vibes.',
-        'good': 'Solid move. The chess gremlins approve.',
-        'brilliant': 'Okay, tactical chef, that was genuinely spicy.'
-    }
-    roast_text = lines.get(label, 'The move was certainly a decision.')
-    if intensity == 'gentle': roast_text = roast_text.split('.')[0] + '.'
-    return jsonify({"roast": roast_text, "advice": f"Before playing {san}, check your opponent\'s forcing moves: checks, captures, and threats. Then compare the candidate moves."})
+    label = str(data.get('label', 'mistake')).lower().strip()
+    san = str(data.get('san', 'that move'))
+    intensity = str(data.get('intensity', 'playful')).lower().strip()
+    if intensity not in ROAST_BANK:
+        intensity = 'playful'
+    pool = ROAST_BANK[intensity].get(label) or ROAST_BANK[intensity]['mistake']
+    # Stable variety: the same move gets a repeatable line, while different moves vary.
+    seed = f'{label}|{san}|{intensity}'
+    index = sum((position + 1) * ord(char) for position, char in enumerate(seed)) % len(pool)
+    roast_text = pool[index]
+    advice = (
+        f"Before playing {san}, scan checks, captures, and threats. "
+        "Then ask what your opponent will do immediately after your move."
+    )
+    return jsonify({'roast': roast_text, 'advice': advice, 'intensity': intensity, 'label': label})
 
 @app.post('/api/screenshot')
 def screenshot_input():

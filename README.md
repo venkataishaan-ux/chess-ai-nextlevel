@@ -1,55 +1,198 @@
-[README.md](https://github.com/user-attachments/files/32155133/README.md)
-# Chess Coach AI — V2.1.6
+# ♟️ Chess Coach AI — V11
 
-Personalized chess analysis app built with Flask, python-chess, and Stockfish.
+**A personalized chess-learning, analysis, training, and improvement platform.**
 
-## V2.1.6
+Chess Coach AI combines **Stockfish**, **python-chess**, and **Gemini 2.5 Flash-Lite** to turn your games into actionable coaching. It analyzes moves, detects recurring weaknesses, creates targeted training, and keeps a long-term player profile.
 
-- Every move receives one classification: **Brilliant, Good, Inaccuracy, Mistake, Blunder**.
-- Stockfish remains the source of evaluation and classification.
-- Full move-by-move breakdown with centipawn loss, evaluation before/after, best move, and coach lesson.
-- Dedicated **Blunder Breakdown**.
-- Sparse **Turning Points** section for the largest mistakes.
-- Best and worst move sections.
-- Interactive FEN-based board replay with working first/previous/next/last controls.
-- Move-list buttons jump to the exact position.
-- Last played move is highlighted on the board.
-- Responsive dark dashboard UI.
+## 🚀 V11 Features
 
-## Architecture
+### ♟️ Game Analysis
+- PGN game input and replay
+- Interactive chessboard
+- First / previous / next / last move navigation
+- Move-list position jumping
+- Last-move highlighting
+- Stockfish analysis of individual moves
+- Best move, evaluation, centipawn loss, and position changes
+- Move classifications such as **Brilliant, Good, Inaccuracy, Mistake, and Blunder**
+- Turning points and blunder breakdown
+- Coach explanations for important decisions
 
-**Stockfish = calculates**  
-**python-chess = position facts and legal move handling**  
-**Coach layer = explains and teaches**
+### 🧠 Personal Chess Coach
+- Multi-game player profile
+- Internal estimated skill indicators
+- Opening, middlegame, tactics, endgame, defense, calculation, threat detection, and other training dimensions
+- Recurring weakness detection
+- Strength and weakness tracking
+- Personalized lessons
+- Personalized puzzles based on mistakes
+- Best Move of the Day
+- Daily training
+- Progress tracking
+- Unrated practice and adaptive training foundations
 
-## Run locally
+> Skill and rating values are **internal coaching estimates**, not official Elo ratings.
+
+### 🎯 V11 Training Ecosystem
+The V11 system follows:
+
+**Play → Analyze → Understand → Detect Weaknesses → Train → Practice → Track Improvement → Analyze Again**
+
+It is designed to become a continuously improving personal chess coach rather than just a game analyzer.
+
+### 🤖 Gemini Teaching Layer
+Gemini is used for explanations and teaching, while Stockfish remains the authority for chess calculation.
+
+- Gemini model: `gemini-2.5-flash-lite` by default
+- Coach Q&A
+- Personalized explanations
+- Friendly, Tactical, Puzzle, and Roast coach personalities
+- Configurable roast intensity
+
+**Important:** Gemini should explain engine results, not invent chess evaluations.
+
+### 👁️ Position & FEN Tools
+- FEN validation
+- FEN position analysis
+- Board reconstruction foundations
+- Screenshot-input foundation for future vision/OCR integration
+
+### 💾 Persistent Player History
+
+V11 supports **PostgreSQL for persistent long-term history**.
+
+Production architecture:
+
+```
+                 ┌─────────────────┐
+                 │   Chess Coach AI │
+                 │    Flask App     │
+                 └────────┬────────┘
+                          │
+             ┌────────────┼────────────┐
+             ▼            ▼            ▼
+        PostgreSQL    Stockfish      Gemini
+       Player Data    Calculation    Teaching
+```
+
+- **Render** runs the Flask web application.
+- **PostgreSQL** stores long-term games, training results, profiles, puzzles, lessons, and achievements.
+- **Stockfish** performs chess calculations.
+- **Gemini 2.5 Flash-Lite** provides teaching and explanations.
+- SQLite remains available as a local-development fallback.
+- Database credentials stay in environment variables and should never be committed to GitHub.
+
+### 🧭 New V11 Frontend
+
+The frontend now includes a redesigned V11 header with:
+
+- Personal Chess Intelligence branding
+- Dashboard navigation
+- Analyze Game navigation
+- Training navigation
+- Responsive layout
+- Quick access to the main coaching areas
+
+## 🏗️ Architecture
+
+**Stockfish = chess calculation**  
+**python-chess = legal chess rules and position handling**  
+**Gemini = teaching and explanations**  
+**PostgreSQL = persistent player history**  
+**Flask = application/API layer**
+
+Keeping these responsibilities separate makes the system easier to improve and test.
+
+## 🔌 V11 API
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v11/health` | System health |
+| `GET /api/v11/profile` | Player profile |
+| `GET /api/v11/dashboard` | Personalized dashboard |
+| `POST /api/v11/game/save` | Save analyzed game |
+| `GET /api/v11/games` | Recent games |
+| `GET /api/v11/training` | Training history |
+| `POST /api/v11/training/result` | Save training result |
+| `GET /api/v11/weaknesses` | Recurring weaknesses |
+| `POST /api/v11/fen/validate` | Validate FEN |
+| `POST /api/v11/fen/analyze` | Analyze FEN |
+| `POST /api/v11/puzzle/new` | Generate puzzle |
+| `POST /api/v11/puzzle/check` | Check puzzle move |
+| `POST /api/v11/practice/move` | Practice move |
+| `POST /api/v11/coach/explain` | Ask the coach |
+| `GET /api/v11/best-move-of-day` | Best move of the day |
+| `GET /api/v11/daily` | Daily training |
+
+## 🛠️ Run Locally
 
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-Stockfish must be installed and available as `stockfish`, or set `STOCKFISH_PATH`.
+Stockfish must be installed and available as `stockfish`, or configure:
 
-## Docker / Render
+```text
+STOCKFISH_PATH=/path/to/stockfish
+```
 
-The included Dockerfile installs Stockfish and starts Gunicorn. On Render, use a Docker Web Service connected to this repository.
+For PostgreSQL, configure:
 
-## Classification
+```text
+DATABASE_URL=your-postgresql-connection-string
+```
 
-Thresholds are intentionally conservative:
+For Gemini:
 
-- Good: < 50 cp loss
-- Inaccuracy: 50–99 cp loss
-- Mistake: 100–199 cp loss
-- Blunder: 200+ cp loss
-- Brilliant: a Stockfish top move that also meets the app's conservative tactical-sacrifice condition
+```text
+GEMINI_API_KEY=your-api-key
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
 
-These labels are engine-based heuristics, not official chess annotations or Elo measurements.
+Never put real API keys or database credentials in source code.
 
-## Version 2.3
-V2.3 adds the first personalized-coach foundation: multi-game profile aggregation, estimated skill indicators, recurring-error counts, FEN position loading, PGN replay data, and a roadmap for screenshot recognition, targeted puzzles, practice games, and roast-coach mode. Skill values are coaching estimates, not official ratings.
+## ☁️ Deployment Architecture
 
+For production:
 
-## V11 Complete Adaptive Coach
-V11 adds persistent SQLite history, multi-game weakness detection, internal estimated skill indicators, verified personalized puzzle generation, FEN validation/analysis, training-result tracking, unrated engine practice endpoints, daily training generation, best-move-of-day selection, and an optional Gemini teaching layer. The V11 dashboard is exposed in the web UI. API keys remain server-side through environment variables.
+**Render → Flask → PostgreSQL**
+
+with:
+
+**Flask → Stockfish** for calculation  
+**Flask → Gemini 2.5 Flash-Lite** for coaching
+
+Render's normal application filesystem should not be treated as the permanent database. PostgreSQL is the persistent storage layer.
+
+## 📈 Roadmap
+
+### Completed foundation
+- V11 adaptive coach architecture
+- PostgreSQL-compatible persistence layer
+- Multi-game profile foundation
+- Weakness detection
+- Personalized puzzle foundation
+- FEN tools
+- Daily training
+- Gemini coaching layer
+- Redesigned frontend navigation
+
+### Next development
+- Full screenshot board recognition with vision/OCR
+- Automatic move-list screenshot recognition
+- Correction UI for recognition errors
+- Rich interactive variation explorer
+- More accurate skill-estimation model
+- User accounts and per-player data isolation
+- Database migrations and indexes
+- Full practice-board interaction
+- More advanced adaptive training
+- Automated persistence and deployment tests
+
+## 📜 Project Philosophy
+
+Chess Coach AI is built around one idea:
+
+> **Don't just tell the player what move was wrong. Teach them why, identify the pattern, and train that exact weakness.**
+

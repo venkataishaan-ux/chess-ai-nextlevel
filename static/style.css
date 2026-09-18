@@ -41,3 +41,5 @@ h1 { margin:5px 0; font-size:clamp(1.8rem,3vw,3rem); }
 .coach-bubble strong { color:#7dd3fc; }
 .coach-bubble p { margin:4px 0 0; color:#cbd5e1; }
 @media (max-width:700px) { .coach-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.v11-card{padding-bottom:18px}.v11-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:0 18px}.v11-grid h3{margin:8px 0}.v11-grid textarea{width:100%;min-height:90px;padding:12px;border:1px solid #334155;border-radius:12px;background:#0b1222;color:#e5e7eb}.v11-grid pre,.v11-dashboard pre{white-space:pre-wrap;max-height:280px;overflow:auto;background:#0b1222;border:1px solid #263352;border-radius:12px;padding:12px;color:#cbd5e1}.v11-dashboard{padding:0 18px}.v11-dashboard{margin-top:12px}@media(max-width:700px){.v11-grid{grid-template-columns:1fr}}

@@ -49,3 +49,7 @@ These labels are engine-based heuristics, not official chess annotations or Elo 
 
 ## Version 2.3
 V2.3 adds the first personalized-coach foundation: multi-game profile aggregation, estimated skill indicators, recurring-error counts, FEN position loading, PGN replay data, and a roadmap for screenshot recognition, targeted puzzles, practice games, and roast-coach mode. Skill values are coaching estimates, not official ratings.
+
+
+## V11 Complete Adaptive Coach
+V11 adds persistent SQLite history, multi-game weakness detection, internal estimated skill indicators, verified personalized puzzle generation, FEN validation/analysis, training-result tracking, unrated engine practice endpoints, daily training generation, best-move-of-day selection, and an optional Gemini teaching layer. The V11 dashboard is exposed in the web UI. API keys remain server-side through environment variables.

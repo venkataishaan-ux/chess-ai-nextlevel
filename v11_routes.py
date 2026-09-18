@@ -170,7 +170,7 @@ def coach_explain():
     try:
         from google import genai
         client=genai.Client(api_key=key)
-        model=os.getenv("GEMINI_MODEL","gemini-2.5-flash")
+        model=os.getenv("GEMINI_MODEL","gemini-2.5-flash-lite")
         system=("You are the teaching layer of a chess coach. Stockfish is authoritative for calculation. "
                 "Never invent engine evaluations. Explain the supplied chess facts in clear language, "
                 "give practical advice, and target the player's recurring weaknesses. "

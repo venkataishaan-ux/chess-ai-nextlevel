@@ -7,10 +7,12 @@ import chess.pgn
 
 from analyzer import analyze_game
 from chess_engine import StockfishEngine
+from v11_routes import register_v11
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 engine = StockfishEngine()
+register_v11(app, engine)
 
 
 @app.route("/")

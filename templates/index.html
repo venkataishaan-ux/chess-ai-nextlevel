@@ -7,8 +7,20 @@
 </head>
 <body>
 <div class="app">
-  <header class="header">
-    <div><div class="eyebrow">Chess Coach AI</div><h1>Analyze. Understand. Improve. ♟️</h1><p class="subtitle">V2.3 • Full move classification + blunder breakdown</p></div>
+  <header class="hero-header">
+    <div class="brand-block">
+      <div class="brand-mark" aria-hidden="true">♟</div>
+      <div>
+        <div class="eyebrow">CHESS COACH AI · V11</div>
+        <h1>Your personal chess intelligence.</h1>
+        <p class="subtitle">Analyze every move. Find your patterns. Train what actually needs work.</p>
+      </div>
+    </div>
+    <nav class="top-nav" aria-label="Main navigation">
+      <button id="dashboardNavBtn" class="nav-button" type="button">◈ Dashboard</button>
+      <a class="nav-button ghost" href="#game-input">Analyze Game</a>
+      <a class="nav-button ghost" href="#training-lab">Training</a>
+    </nav>
     <div id="engineStatus" class="engine">Checking Stockfish…</div>
   </header>
   <main class="layout">
@@ -46,7 +58,7 @@
       </div>
       <div class="card" style="margin-top:18px"><div class="card-head"><h2>Coach Report</h2></div><div id="analysis" class="report"><div class="empty">Run Stockfish analysis to generate the V2.3 report.</div></div></div>
     </section>
-  <div class="card" style="margin-top:18px"><div class="card-head"><h2>Training Lab</h2></div>
+  <div class="card" id="training-lab" style="margin-top:18px"><div class="card-head"><h2>Training Lab</h2></div>
 <div class="actions"><button id="botBtn" class="secondary" type="button">Get Bot Move</button><button id="coachBtn" class="secondary" type="button">Check Coach Move</button><button id="planBtn" class="primary" type="button">Build Lessons & Puzzles</button></div>
 <div id="trainingOutput" class="status">Load a game first, then use the training tools.</div></div>
       <div class="card coach-card" style="margin-top:18px">
@@ -59,6 +71,16 @@
         </div>
         <div id="coachBubble" class="coach-bubble"><span id="coachBubbleFace">🙂</span><div><strong id="coachBubbleName">Friendly Coach</strong><p id="coachBubbleText">Load a game and I’ll explain your moves.</p></div></div>
       </div>
+
+<div class="card v11-card" id="dashboard" style="margin-top:18px">
+  <div class="card-head"><h2>♟️ V11 Personal Chess Ecosystem</h2><span class="move-counter">Adaptive Coach</span></div>
+  <div class="v11-grid">
+    <div><h3>FEN Lab</h3><textarea id="v11Fen" placeholder="Paste a FEN position…"></textarea><div class="actions"><button id="v11FenValidate" class="secondary">Validate</button><button id="v11FenAnalyze" class="primary">Analyze Position</button></div><pre id="v11FenOutput"></pre></div>
+    <div><h3>Daily Training</h3><button id="v11Daily" class="primary">Generate Today's Training</button><pre id="v11DailyOutput"></pre><h3>Coach Brain</h3><textarea id="v11CoachQuestion" placeholder="Ask about your game, position, or weakness…"></textarea><button id="v11CoachAsk" class="secondary">Ask Coach</button><pre id="v11CoachOutput"></pre></div>
+  </div>
+  <div class="v11-dashboard"><button id="v11DashboardBtn" class="primary">Refresh My Dashboard</button><pre id="v11DashboardOutput"></pre></div>
+</div>
+<script src="{{ url_for('static', filename='v11.js') }}?v=11.0"></script>
 </main>
 </div>
 <script src="{{ url_for('static', filename='app.js') }}?v=2.1.5"></script>
